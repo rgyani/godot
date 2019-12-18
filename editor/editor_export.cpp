@@ -581,6 +581,14 @@ String EditorExportPlugin::get_ios_cpp_code() const {
 	return ios_cpp_code;
 }
 
+void EditorExportPlugin::add_entitlement(const String &p_name, const String &p_value) {
+	entitlements += ("<key>" + p_name + "</key>" + "\n" + p_value + "\n");
+}
+
+String EditorExportPlugin::get_entitlements() const {
+	return entitlements;
+}
+
 void EditorExportPlugin::_export_file_script(const String &p_path, const String &p_type, const PoolVector<String> &p_features) {
 
 	if (get_script_instance()) {
@@ -622,6 +630,7 @@ void EditorExportPlugin::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("add_ios_linker_flags", "flags"), &EditorExportPlugin::add_ios_linker_flags);
 	ClassDB::bind_method(D_METHOD("add_ios_bundle_file", "path"), &EditorExportPlugin::add_ios_bundle_file);
 	ClassDB::bind_method(D_METHOD("add_ios_cpp_code", "code"), &EditorExportPlugin::add_ios_cpp_code);
+	ClassDB::bind_method(D_METHOD("add_entitlement", "key", "value"), &EditorExportPlugin::add_entitlement);
 	ClassDB::bind_method(D_METHOD("skip"), &EditorExportPlugin::skip);
 
 	BIND_VMETHOD(MethodInfo("_export_file", PropertyInfo(Variant::STRING, "path"), PropertyInfo(Variant::STRING, "type"), PropertyInfo(Variant::POOL_STRING_ARRAY, "features")));

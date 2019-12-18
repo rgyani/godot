@@ -59,6 +59,8 @@ class EditorExportPlatformOSX : public EditorExportPlatform {
 	Error _code_sign(const Ref<EditorExportPreset> &p_preset, const String &p_path);
 	Error _create_dmg(const String &p_dmg_path, const String &p_pkg_name, const String &p_app_path_name);
 
+	String _get_entitlements();
+
 #ifdef OSX_ENABLED
 	bool use_codesign() const { return true; }
 	bool use_dmg() const { return true; }
@@ -133,13 +135,21 @@ void EditorExportPlatformOSX::get_export_options(List<ExportOption> *r_options) 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "privacy/camera_usage_description", PROPERTY_HINT_PLACEHOLDER_TEXT, "Provide a message if you need to use the camera"), ""));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "privacy/microphone_usage_description", PROPERTY_HINT_PLACEHOLDER_TEXT, "Provide a message if you need to use the microphone"), ""));
 
-
 #ifdef OSX_ENABLED
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/enable"), false));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "codesign/identity", PROPERTY_HINT_PLACEHOLDER_TEXT, "Type: Name (ID)"), ""));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/timestamp"), true));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/hardened_runtime"), true));
-	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "codesign/entitlements", PROPERTY_HINT_GLOBAL_FILE, "*.plist"), ""));
+
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/app_sandbox"), false));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "codesign/app_sandbox/filesystem_access_movies", PROPERTY_HINT_ENUM, "None,Read-only,Read-write"), 0));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "codesign/app_sandbox/filesystem_access_music", PROPERTY_HINT_ENUM, "None,Read-only,Read-write"), 0));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "codesign/app_sandbox/filesystem_access_pictures", PROPERTY_HINT_ENUM, "None,Read-only,Read-write"), 0));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "codesign/app_sandbox/filesystem_access_downloads", PROPERTY_HINT_ENUM, "None,Read-only,Read-write"), 0));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/app_sandbox/network_access_client"), false));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/app_sandbox/network_access_server"), false));
+
+	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "codesign/use_custom_entitlements_file", PROPERTY_HINT_GLOBAL_FILE, "*.plist"), ""));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::POOL_STRING_ARRAY, "codesign/custom_options"), PoolStringArray()));
 #endif
 
@@ -370,6 +380,15 @@ void EditorExportPlatformOSX::_fix_plist(const Ref<EditorExportPreset> &p_preset
 	- and then wrap it up in a DMG
 **/
 
+String EditorExportPlatformOSX::_get_entitlements() {
+	Vector<Ref<EditorExportPlugin> > export_plugins = EditorExport::get_singleton()->get_export_plugins();
+	String result;
+	for (int i = 0; i < export_plugins.size(); ++i) {
+		result += export_plugins[i]->get_entitlements();
+	}
+	return result;
+}
+
 Error EditorExportPlatformOSX::_code_sign(const Ref<EditorExportPreset> &p_preset, const String &p_path) {
 	List<String> args;
 
@@ -379,12 +398,73 @@ Error EditorExportPlatformOSX::_code_sign(const Ref<EditorExportPreset> &p_prese
 	if (p_preset->get("codesign/hardened_runtime")) {
 		args.push_back("--options");
 		args.push_back("runtime");
-	}
 
-	if (p_preset->get("codesign/entitlements") != "") {
-		/* this should point to our entitlements.plist file that sandboxes our application, I don't know if this should also be placed in our app bundle */
-		args.push_back("--entitlements");
-		args.push_back(p_preset->get("codesign/entitlements"));
+		if (p_preset->get("codesign/use_custom_entitlements_file") != "") {
+			print_line("codesign: using custom entitlements");
+
+			args.push_back("--entitlements");
+			args.push_back(p_preset->get("codesign/use_custom_entitlements_file"));
+		} else {
+			print_line("codesign: using default entitlements");
+
+			String entitlements = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+			entitlements += "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n";
+			entitlements += "<plist version=\"1.0\">\n";
+			entitlements += "<dict>\n";
+			entitlements += _get_entitlements();
+
+			if (p_preset->get("privacy/camera_usage_description") != "") {
+				entitlements += ("<key>com.apple.security.device.audio-input</key>\n<true/>\n");
+			}
+			if (p_preset->get("com.apple.security.device.camera") != "") {
+				entitlements += ("<key>com.apple.security.device.audio-input</key>\n<true/>\n");
+			}
+			if ((bool)p_preset->get("codesign/app_sandbox")) {
+				entitlements += ("<key>com.apple.security.app-sandbox</key>\n<true/>\n");
+				if ((int)p_preset->get("codesign/app_sandbox/filesystem_access_movies") == 1) {
+					entitlements += ("<key>com.apple.security.assets.movies.read-only</key>\n<true/>\n");
+				} else if ((int)p_preset->get("codesign/app_sandbox/filesystem_access_movies") == 2) {
+					entitlements += ("<key>com.apple.security.assets.movies.read-write</key>\n<true/>\n");
+				}
+				if ((int)p_preset->get("codesign/app_sandbox/filesystem_access_music") == 1) {
+					entitlements += ("<key>com.apple.security.assets.music.read-only</key>\n<true/>\n");
+				} else if ((int)p_preset->get("codesign/app_sandbox/filesystem_access_music") == 2) {
+					entitlements += ("<key>com.apple.security.assets.music.read-write</key>\n<true/>\n");
+				}
+				if ((int)p_preset->get("codesign/app_sandbox/filesystem_access_pictures") == 1) {
+					entitlements += ("<key>com.apple.security.assets.pictures.read-only</key>\n<true/>\n");
+				} else if ((int)p_preset->get("codesign/app_sandbox/filesystem_access_pictures") == 2) {
+					entitlements += ("<key>com.apple.security.assets.pictures.read-write</key>\n<true/>\n");
+				}
+				if ((int)p_preset->get("codesign/app_sandbox/filesystem_access_downloads") == 1) {
+					entitlements += ("<key>com.apple.security.files.downloads.read-only</key>\n<true/>\n");
+				} else if ((int)p_preset->get("codesign/app_sandbox/filesystem_access_downloads") == 2) {
+					entitlements += ("<key>com.apple.security.files.downloads.read-write</key>\n<true/>\n");
+				}
+				if ((bool)p_preset->get("codesign/app_sandbox/network_access_client")) {
+					entitlements += ("<key>com.apple.security.network.client</key>\n<true/>\n");
+				}
+				if ((bool)p_preset->get("codesign/app_sandbox/network_access_server")) {
+					entitlements += ("<key>com.apple.security.network.server</key>\n<true/>\n");
+				}
+			}
+			entitlements += "</dict>\n";
+			entitlements += "</plist>\n";
+
+			String entitlements_f = EditorSettings::get_singleton()->get_cache_dir().plus_file("entitlements.plist");
+
+			FileAccess *f = FileAccess::open(entitlements_f, FileAccess::WRITE);
+			if (f) {
+				f->store_string(entitlements);
+				f->close();
+				memdelete(f);
+			} else {
+				return FAILED;
+			}
+
+			args.push_back("--entitlements");
+			args.push_back(entitlements_f);
+		}
 	}
 
 	PoolStringArray user_args = p_preset->get("codesign/custom_options");

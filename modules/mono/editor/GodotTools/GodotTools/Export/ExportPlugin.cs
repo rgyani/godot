@@ -125,6 +125,14 @@ namespace GodotTools.Export
 
             dependencies[projectDllName] = projectDllSrcPath;
 
+            if (platform == OS.Platforms.OSX)
+            {
+                AddEntitlement("com.apple.security.cs.allow-jit");
+                AddEntitlement("com.apple.security.cs.allow-unsigned-executable-memory");
+                AddEntitlement("com.apple.security.cs.allow-dyld-environment-variables");
+                AddEntitlement("com.apple.security.cs.disable-library-validation");
+            }
+
             if (platform == OS.Platforms.Android)
             {
                 string godotAndroidExtProfileDir = GetBclProfileDir("godot_android_ext");
