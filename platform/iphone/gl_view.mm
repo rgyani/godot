@@ -499,35 +499,47 @@ static void clear_touches() {
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
 	NSArray *tlist = [[event allTouches] allObjects];
 	for (unsigned int i = 0; i < [tlist count]; i++) {
-
 		if ([touches containsObject:[tlist objectAtIndex:i]]) {
-
 			UITouch *touch = [tlist objectAtIndex:i];
 			if (touch.phase != UITouchPhaseBegan)
 				continue;
-			int tid = get_touch_id(touch);
-			ERR_FAIL_COND(tid == -1);
+
 			CGPoint touchPoint = [touch locationInView:self];
-			OSIPhone::get_singleton()->touch_press(tid, touchPoint.x * self.contentScaleFactor, touchPoint.y * self.contentScaleFactor, true, touch.tapCount > 1);
+			CGPoint prev_point = [touch previousLocationInView:self];
+			if (touch.type == UITouchTypePencil) {
+				float alt = Math::tan(touch.altitudeAngle);
+				float azim = [touch azimuthAngleInView:self];
+				Vector2 tilt = Vector2(Math::atan(Math::sin(azim) / alt), Math::atan(Math::cos(azim) / alt));
+				OSIPhone::get_singleton()->pencil_move(prev_point.x * self.contentScaleFactor, prev_point.y * self.contentScaleFactor, touchPoint.x * self.contentScaleFactor, touchPoint.y * self.contentScaleFactor, tilt, touch.force);
+			} else {
+				int tid = get_touch_id(touch);
+				ERR_FAIL_COND(tid == -1);
+				OSIPhone::get_singleton()->touch_press(tid, touchPoint.x * self.contentScaleFactor, touchPoint.y * self.contentScaleFactor, true, touch.tapCount > 1);
+			}
 		};
 	};
 }
 
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
-
 	NSArray *tlist = [[event allTouches] allObjects];
 	for (unsigned int i = 0; i < [tlist count]; i++) {
-
 		if ([touches containsObject:[tlist objectAtIndex:i]]) {
-
 			UITouch *touch = [tlist objectAtIndex:i];
 			if (touch.phase != UITouchPhaseMoved)
 				continue;
-			int tid = get_touch_id(touch);
-			ERR_FAIL_COND(tid == -1);
+
 			CGPoint touchPoint = [touch locationInView:self];
 			CGPoint prev_point = [touch previousLocationInView:self];
-			OSIPhone::get_singleton()->touch_drag(tid, prev_point.x * self.contentScaleFactor, prev_point.y * self.contentScaleFactor, touchPoint.x * self.contentScaleFactor, touchPoint.y * self.contentScaleFactor);
+			if (touch.type == UITouchTypePencil) {
+				float alt = Math::tan(touch.altitudeAngle);
+				float azim = [touch azimuthAngleInView:self];
+				Vector2 tilt = Vector2(Math::atan(Math::sin(azim) / alt), Math::atan(Math::cos(azim) / alt));
+				OSIPhone::get_singleton()->pencil_move(prev_point.x * self.contentScaleFactor, prev_point.y * self.contentScaleFactor, touchPoint.x * self.contentScaleFactor, touchPoint.y * self.contentScaleFactor, tilt, touch.force);
+			} else {
+				int tid = get_touch_id(touch);
+				ERR_FAIL_COND(tid == -1);
+				OSIPhone::get_singleton()->touch_drag(tid, prev_point.x * self.contentScaleFactor, prev_point.y * self.contentScaleFactor, touchPoint.x * self.contentScaleFactor, touchPoint.y * self.contentScaleFactor);
+			}
 		};
 	};
 }
@@ -535,23 +547,29 @@ static void clear_touches() {
 - (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
 	NSArray *tlist = [[event allTouches] allObjects];
 	for (unsigned int i = 0; i < [tlist count]; i++) {
-
 		if ([touches containsObject:[tlist objectAtIndex:i]]) {
-
 			UITouch *touch = [tlist objectAtIndex:i];
 			if (touch.phase != UITouchPhaseEnded)
 				continue;
-			int tid = get_touch_id(touch);
-			ERR_FAIL_COND(tid == -1);
-			remove_touch(touch);
+
 			CGPoint touchPoint = [touch locationInView:self];
-			OSIPhone::get_singleton()->touch_press(tid, touchPoint.x * self.contentScaleFactor, touchPoint.y * self.contentScaleFactor, false, false);
+			CGPoint prev_point = [touch previousLocationInView:self];
+			if (touch.type == UITouchTypePencil) {
+				float alt = Math::tan(touch.altitudeAngle);
+				float azim = [touch azimuthAngleInView:self];
+				Vector2 tilt = Vector2(Math::atan(Math::sin(azim) / alt), Math::atan(Math::cos(azim) / alt));
+				OSIPhone::get_singleton()->pencil_move(prev_point.x * self.contentScaleFactor, prev_point.y * self.contentScaleFactor, touchPoint.x * self.contentScaleFactor, touchPoint.y * self.contentScaleFactor, tilt, touch.force);
+			} else {
+				int tid = get_touch_id(touch);
+				ERR_FAIL_COND(tid == -1);
+				remove_touch(touch);
+				OSIPhone::get_singleton()->touch_press(tid, touchPoint.x * self.contentScaleFactor, touchPoint.y * self.contentScaleFactor, false, false);
+			}
 		};
 	};
 }
 
 - (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event {
-
 	OSIPhone::get_singleton()->touches_cancelled();
 	clear_touches();
 };

@@ -228,6 +228,22 @@ void OSIPhone::key(uint32_t p_key, bool p_pressed) {
 	queue_event(ev);
 };
 
+void OSIPhone::pencil_move(int p_prev_x, int p_prev_y, int p_x, int p_y, const Vector2 &p_tilt, float p_pressure) {
+	Ref<InputEventMouseMotion> mm;
+	mm.instance();
+
+	mm->set_pressure(p_pressure);
+	mm->set_tilt(p_tilt);
+
+	mm->set_position(Vector2(p_x, p_y));
+	mm->set_global_position(Vector2(p_x, p_y));
+
+	input->set_mouse_position(mm->get_position());
+	mm->set_speed(input->get_last_mouse_speed());
+	mm->set_relative(Vector2(mm->get_position() - Vector2(p_prev_x, p_prev_y)));
+	queue_event(mm);
+}
+
 void OSIPhone::touch_press(int p_idx, int p_x, int p_y, bool p_pressed, bool p_doubleclick) {
 
 	if (!GLOBAL_DEF("debug/disable_touch", false)) {

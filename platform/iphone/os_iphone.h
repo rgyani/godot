@@ -123,6 +123,7 @@ public:
 
 	uint8_t get_orientations() const;
 
+	void pencil_move(int p_prev_x, int p_prev_y, int p_x, int p_y, const Vector2 &p_tilt, float p_pressure);
 	void touch_press(int p_idx, int p_x, int p_y, bool p_pressed, bool p_doubleclick);
 	void touch_drag(int p_idx, int p_prev_x, int p_prev_y, int p_x, int p_y);
 	void touches_cancelled();
