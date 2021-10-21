@@ -60,12 +60,13 @@ TEST_SUITE("[[TextServer]") {
 
 				RID font1 = ts->create_font();
 				ts->font_set_data_ptr(font1, _font_NotoSans_Regular, _font_NotoSans_Regular_size);
-				RID font2 = ts->create_font();
-				ts->font_set_data_ptr(font2, _font_NotoSansThaiUI_Regular, _font_NotoSansThaiUI_Regular_size);
+				// RID font2 = ts->create_font();
+				// ts->font_set_data_ptr(font2, _font_NotoSansThaiUI_Regular, _font_NotoSansThaiUI_Regular_size);
+				// TODO: load from test data folder.
 
 				Vector<RID> font;
 				font.push_back(font1);
-				font.push_back(font2);
+				// font.push_back(font2);
 
 				String test = U"คนอ้วน khon uan ראה";
 				//                 6^       17^
@@ -113,12 +114,13 @@ TEST_SUITE("[[TextServer]") {
 
 				RID font1 = ts->create_font();
 				ts->font_set_data_ptr(font1, _font_NotoSans_Regular, _font_NotoSans_Regular_size);
-				RID font2 = ts->create_font();
-				ts->font_set_data_ptr(font2, _font_NotoNaskhArabicUI_Regular, _font_NotoNaskhArabicUI_Regular_size);
+				// RID font2 = ts->create_font();
+				// ts->font_set_data_ptr(font2, _font_NotoNaskhArabicUI_Regular, _font_NotoNaskhArabicUI_Regular_size);
+				// TODO: load from test data folder.
 
 				Vector<RID> font;
 				font.push_back(font1);
-				font.push_back(font2);
+				// font.push_back(font2);
 
 				String test = U"Arabic (اَلْعَرَبِيَّةُ, al-ʿarabiyyah)";
 				//                    7^      26^
@@ -164,12 +166,13 @@ TEST_SUITE("[[TextServer]") {
 
 				RID font1 = ts->create_font();
 				ts->font_set_data_ptr(font1, _font_NotoSans_Regular, _font_NotoSans_Regular_size);
-				RID font2 = ts->create_font();
-				ts->font_set_data_ptr(font2, _font_NotoSansThaiUI_Regular, _font_NotoSansThaiUI_Regular_size);
+				// RID font2 = ts->create_font();
+				// ts->font_set_data_ptr(font2, _font_NotoSansThaiUI_Regular, _font_NotoSansThaiUI_Regular_size);
+				// TODO: load from test data folder.
 
 				Vector<RID> font;
 				font.push_back(font1);
-				font.push_back(font2);
+				// font.push_back(font2);
 
 				RID ctx = ts->create_shaped_text();
 				TEST_FAIL_COND(ctx == RID(), "Creating text buffer failed.");
@@ -205,12 +208,13 @@ TEST_SUITE("[[TextServer]") {
 
 				RID font1 = ts->create_font();
 				ts->font_set_data_ptr(font1, _font_NotoSans_Regular, _font_NotoSans_Regular_size);
-				RID font2 = ts->create_font();
-				ts->font_set_data_ptr(font2, _font_NotoNaskhArabicUI_Regular, _font_NotoNaskhArabicUI_Regular_size);
+				// RID font2 = ts->create_font();
+				// ts->font_set_data_ptr(font2, _font_NotoNaskhArabicUI_Regular, _font_NotoNaskhArabicUI_Regular_size);
+				// TODO: load from test data folder.
 
 				Vector<RID> font;
 				font.push_back(font1);
-				font.push_back(font2);
+				// font.push_back(font2);
 
 				String test_1 = U"الحمد";
 				String test_2 = U"الحمد test";

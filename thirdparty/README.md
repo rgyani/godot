@@ -120,7 +120,7 @@ Files extracted from upstream source:
 
 ## fonts
 
-- `NotoSans*.ttf`, `NotoNaskhArabicUI_*.ttf`:
+- `NotoSans*.ttf`:
   * Upstream: https://github.com/googlefonts/noto-fonts
   * Version: v2017-10-24-phase3-second-cleanup
   * License: OFL-1.1
@@ -130,10 +130,6 @@ Files extracted from upstream source:
   * Upstream: https://github.com/source-foundry/Hack
   * Version: 3.003 (2018)
   * License: MIT + Bitstream Vera License
-- `DroidSans*.ttf`:
-  * Upstream: https://android.googlesource.com/platform/frameworks/base/+/master/data/fonts/
-  * Version: ? (pre-2014 commit when DroidSansJapanese.ttf was obsoleted)
-  * License: Apache 2.0
 - `OpenSans_SemiBold.ttf`:
   * Upstream: https://fonts.google.com/specimen/Open+Sans
   * Version: 1.10 (downloaded from Google Fonts in February 2021)
