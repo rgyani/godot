@@ -45,9 +45,7 @@
 #include "core/os/keyboard.h"
 #include "core/os/os.h"
 #include "core/version.h"
-#include "editor/doc_translations.gen.h"
 #include "editor/editor_node.h"
-#include "editor/editor_translations.gen.h"
 #include "scene/main/node.h"
 #include "scene/main/scene_tree.h"
 #include "scene/main/window.h"
@@ -277,7 +275,7 @@ void EditorSettings::_get_property_list(List<PropertyInfo> *p_list) const {
 		if (!E->get().name.begins_with("_") && !E->get().name.begins_with("projects/")) {
 			pusage |= PROPERTY_USAGE_EDITOR;
 		} else {
-			pusage |= PROPERTY_USAGE_STORAGE; //hiddens must always be saved
+			pusage |= PROPERTY_USAGE_STORAGE; // hiddens must always be saved
 		}
 
 		PropertyInfo pi(E->get().type, E->get().name);
@@ -293,7 +291,7 @@ void EditorSettings::_get_property_list(List<PropertyInfo> *p_list) const {
 		p_list->push_back(pi);
 	}
 
-	p_list->push_back(PropertyInfo(Variant::ARRAY, "shortcuts", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL)); //do not edit
+	p_list->push_back(PropertyInfo(Variant::ARRAY, "shortcuts", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL)); // do not edit
 	p_list->push_back(PropertyInfo(Variant::ARRAY, "builtin_action_overrides", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL));
 }
 
@@ -369,16 +367,28 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 		}
 
 		String best;
-		EditorTranslationList *etl = _editor_translations;
+		List<String> editor_translations;
+		DirAccessRef da = DirAccess::open(EditorPaths::get_singleton()->get_data_dir().plus_file("translations"));
+		if (da) {
+			da->list_dir_begin();
+			String path = da->get_next();
+			while (path != String()) {
+				if (!da->current_is_dir() && (path.ends_with(".po"))) {
+					editor_translations.push_back(path.get_basename());
+				}
+				path = da->get_next();
+			}
+			da->list_dir_end();
+		}
+		editor_translations.sort();
 
-		while (etl->data) {
-			const String &locale = etl->lang;
+		for (List<String>::Element *E = editor_translations.front(); E; E = E->next()) {
+			const String &locale = E->get();
 
 			// Skip locales which we can't render properly (see above comment).
 			// Test against language code without regional variants (e.g. ur_PK).
 			String lang_code = locale.get_slice("_", 0);
 			if (locales_to_skip.find(lang_code) != -1) {
-				etl++;
 				continue;
 			}
 
@@ -392,8 +402,6 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 			if (best == String() && host_lang.begins_with(locale)) {
 				best = locale;
 			}
-
-			etl++;
 		}
 
 		if (best == String()) {
@@ -494,7 +502,7 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_initial_set("docks/filesystem/textfile_extensions", "txt,md,cfg,ini,log,json,yml,yaml,toml");
 
 	// Property editor
-	_initial_set("docks/property_editor/auto_refresh_interval", 0.2); //update 5 times per second by default
+	_initial_set("docks/property_editor/auto_refresh_interval", 0.2); // update 5 times per second by default
 	EDITOR_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "docks/property_editor/subresource_hue_tint", 0.75, "0,1,0.01")
 
 	/* Text editor */
@@ -922,50 +930,44 @@ void EditorSettings::setup_language() {
 		return; // Default, nothing to do.
 	}
 	// Load editor translation for configured/detected locale.
-	EditorTranslationList *etl = _editor_translations;
-	while (etl->data) {
-		if (etl->lang == lang) {
-			Vector<uint8_t> data;
-			data.resize(etl->uncomp_size);
-			Compression::decompress(data.ptrw(), etl->uncomp_size, etl->data, etl->comp_size, Compression::MODE_DEFLATE);
 
-			FileAccessMemory *fa = memnew(FileAccessMemory);
-			fa->open_custom(data.ptr(), data.size());
+	DirAccess *dir = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
 
-			Ref<Translation> tr = TranslationLoaderPO::load_translation(fa);
+	String ed_name = EditorPaths::get_singleton()->get_data_dir().plus_file("translations").plus_file(lang + ".po");
+	String doc_name = EditorPaths::get_singleton()->get_data_dir().plus_file("translations").plus_file("doc").plus_file(lang + ".po");
 
-			if (tr.is_valid()) {
-				tr->set_locale(etl->lang);
-				TranslationServer::get_singleton()->set_tool_translation(tr);
-				break;
-			}
+	if (dir->file_exists(ed_name)) {
+		print_verbose("Loading editor transloation file: " + ed_name);
+		Error err;
+		FileAccess *f = FileAccess::open(ed_name, FileAccess::READ, &err);
+		if (err != OK) {
+			return;
 		}
 
-		etl++;
+		Ref<Translation> tr = TranslationLoaderPO::load_translation(f);
+		if (tr.is_valid()) {
+			tr->set_locale(lang);
+			TranslationServer::get_singleton()->set_tool_translation(tr);
+		}
 	}
 
-	// Load class reference translation.
-	DocTranslationList *dtl = _doc_translations;
-	while (dtl->data) {
-		if (dtl->lang == lang) {
-			Vector<uint8_t> data;
-			data.resize(dtl->uncomp_size);
-			Compression::decompress(data.ptrw(), dtl->uncomp_size, dtl->data, dtl->comp_size, Compression::MODE_DEFLATE);
-
-			FileAccessMemory *fa = memnew(FileAccessMemory);
-			fa->open_custom(data.ptr(), data.size());
-
-			Ref<Translation> tr = TranslationLoaderPO::load_translation(fa);
-
-			if (tr.is_valid()) {
-				tr->set_locale(dtl->lang);
-				TranslationServer::get_singleton()->set_doc_translation(tr);
-				break;
-			}
+	if (dir->file_exists(doc_name)) {
+		print_verbose("Loading documentation transloation file: " + doc_name);
+		Error err;
+		FileAccess *f = FileAccess::open(doc_name, FileAccess::READ, &err);
+		if (err != OK) {
+			return;
 		}
 
-		dtl++;
+		Ref<Translation> tr = TranslationLoaderPO::load_translation(f);
+
+		if (tr.is_valid()) {
+			tr->set_locale(lang);
+			TranslationServer::get_singleton()->set_doc_translation(tr);
+		}
 	}
+
+	memdelete(dir);
 }
 
 void EditorSettings::setup_network() {
@@ -1557,15 +1559,15 @@ Ref<Shortcut> ED_SHORTCUT_ARRAY(const String &p_path, const String &p_name, cons
 
 	Ref<Shortcut> sc = EditorSettings::get_singleton()->get_shortcut(p_path);
 	if (sc.is_valid()) {
-		sc->set_name(p_name); //keep name (the ones that come from disk have no name)
-		sc->set_meta("original", events.duplicate(true)); //to compare against changes
+		sc->set_name(p_name); // keep name (the ones that come from disk have no name)
+		sc->set_meta("original", events.duplicate(true)); // to compare against changes
 		return sc;
 	}
 
 	sc.instantiate();
 	sc->set_name(p_name);
 	sc->set_events(events);
-	sc->set_meta("original", events.duplicate(true)); //to compare against changes
+	sc->set_meta("original", events.duplicate(true)); // to compare against changes
 	EditorSettings::get_singleton()->add_shortcut(p_path, sc);
 
 	return sc;
