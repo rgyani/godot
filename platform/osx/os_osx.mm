@@ -3308,6 +3308,8 @@ void OS_OSX::run() {
 		set_window_fullscreen(true);
 	}
 
+	joypad_osx->start_processing();
+
 	//uint64_t last_ticks=get_ticks_usec();
 
 	//int frames=0;

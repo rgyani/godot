@@ -56,6 +56,14 @@ struct rec_element {
 	};
 };
 
+@interface JoypadObserver : NSObject
+
+- (void)startObserving;
+- (void)startProcessing;
+- (void)finishObserving;
+
+@end
+
 struct joypad {
 	IOHIDDeviceRef device_ref;
 
@@ -96,6 +104,7 @@ class JoypadOSX {
 private:
 	InputDefault *input;
 	IOHIDManagerRef hid_manager;
+	JoypadObserver *observer;
 
 	Vector<joypad> device_list;
 
@@ -113,6 +122,12 @@ private:
 	void joypad_vibration_stop(int p_id, uint64_t p_timestamp);
 
 public:
+	void start_processing();
+	int get_unused_joy_id();
+	void joy_connection_changed(int p_idx, bool p_connected, String p_name);
+	void joy_button(int p_device, int p_button, bool p_pressed);
+	void joy_axis(int p_device, int p_axis, const InputDefault::JoyAxis &p_value);
+
 	void process_joypads();
 
 	void _device_added(IOReturn p_res, IOHIDDeviceRef p_device);

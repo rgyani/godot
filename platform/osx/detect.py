@@ -191,6 +191,8 @@ def configure(env):
             "CoreMedia",
             "-framework",
             "CoreVideo",
+            "-framework",
+            "GameController",
         ]
     )
     env.Append(LIBS=["pthread"])
