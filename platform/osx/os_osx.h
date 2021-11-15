@@ -51,6 +51,13 @@
 #include <ApplicationServices/ApplicationServices.h>
 #include <CoreVideo/CoreVideo.h>
 
+#if defined(USE_OPENGL_ANGLE)
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+
+#include <QuartzCore/CAMetalLayer.h>
+#endif
+
 #undef BitMap
 #undef CursorShape
 
@@ -114,9 +121,16 @@ public:
 	id window_view;
 	id autoreleasePool;
 	id cursor;
-	NSOpenGLPixelFormat *pixelFormat;
-	NSOpenGLContext *context;
-	NSOpenGLContext *context_offscreen;
+#if defined(USE_OPENGL_LEGACY)
+	NSOpenGLContext *context = nullptr;
+	NSOpenGLContext *context_offscreen = nullptr;
+#endif
+#if defined(USE_OPENGL_ANGLE)
+	EGLDisplay display = EGL_NO_DISPLAY;
+	EGLContext context = EGL_NO_CONTEXT;
+	EGLContext context_offscreen = EGL_NO_CONTEXT;
+	EGLSurface surface = EGL_NO_SURFACE;
+#endif
 
 	Vector<Vector2> mpath;
 	bool layered_window;

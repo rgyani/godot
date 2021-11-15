@@ -355,6 +355,7 @@ static NSCursor *cursorFromSelector(SEL selector, SEL fallback = nil) {
 		OS_OSX::singleton->window_size.width = fbRect.size.width * newDisplayScale;
 		OS_OSX::singleton->window_size.height = fbRect.size.height * newDisplayScale;
 
+#ifdef USE_OPENGL_LEGACY
 		if (OS_OSX::singleton->context) {
 			GLint dim[2];
 			dim[0] = OS_OSX::singleton->window_size.width;
@@ -362,6 +363,14 @@ static NSCursor *cursorFromSelector(SEL selector, SEL fallback = nil) {
 			CGLSetParameter((CGLContextObj)[OS_OSX::singleton->context CGLContextObj], kCGLCPSurfaceBackingSize, &dim[0]);
 			CGLEnable((CGLContextObj)[OS_OSX::singleton->context CGLContextObj], kCGLCESurfaceBackingSize);
 		}
+#endif
+
+#if defined(USE_OPENGL_ANGLE)
+		CALayer *layer = [OS_OSX::singleton->window_view layer];
+		if (layer) {
+			layer.contentsScale = newDisplayScale;
+		}
+#endif
 
 		//Update context
 		if (OS_OSX::singleton->main_loop) {
@@ -380,8 +389,9 @@ static NSCursor *cursorFromSelector(SEL selector, SEL fallback = nil) {
 }
 
 - (void)windowDidResize:(NSNotification *)notification {
+#ifdef USE_OPENGL_LEGACY
 	[OS_OSX::singleton->context update];
-
+#endif
 	const NSRect contentRect = [OS_OSX::singleton->window_view frame];
 	const NSRect fbRect = contentRect;
 
@@ -389,6 +399,7 @@ static NSCursor *cursorFromSelector(SEL selector, SEL fallback = nil) {
 	OS_OSX::singleton->window_size.width = fbRect.size.width * displayScale;
 	OS_OSX::singleton->window_size.height = fbRect.size.height * displayScale;
 
+#ifdef USE_OPENGL_LEGACY
 	if (OS_OSX::singleton->context) {
 		GLint dim[2];
 		dim[0] = OS_OSX::singleton->window_size.width;
@@ -396,32 +407,19 @@ static NSCursor *cursorFromSelector(SEL selector, SEL fallback = nil) {
 		CGLSetParameter((CGLContextObj)[OS_OSX::singleton->context CGLContextObj], kCGLCPSurfaceBackingSize, &dim[0]);
 		CGLEnable((CGLContextObj)[OS_OSX::singleton->context CGLContextObj], kCGLCESurfaceBackingSize);
 	}
-
-	/*
-	_GodotInputFramebufferSize(window, fbRect.size.width, fbRect.size.height);
-	_GodotInputWindowSize(window, contentRect.size.width, contentRect.size.height);
-	_GodotInputWindowDamage(window);
-
-	if (window->cursorMode == Godot_CURSOR_DISABLED)
-		centerCursor(window);
-*/
+#endif
+#if defined(USE_OPENGL_ANGLE)
+	CALayer *layer = [OS_OSX::singleton->window_view layer];
+	if (layer) {
+		layer.contentsScale = displayScale;
+	}
+#endif
 }
 
 - (void)windowDidMove:(NSNotification *)notification {
 	if (OS_OSX::singleton->get_main_loop()) {
 		OS_OSX::singleton->input->release_pressed_events();
 	}
-
-	/*
-	[window->nsgl.context update];
-
-	int x, y;
-	_GodotPlatformGetWindowPos(window, &x, &y);
-	_GodotInputWindowPos(window, x, y);
-
-	if (window->cursorMode == Godot_CURSOR_DISABLED)
-		centerCursor(window);
-*/
 }
 
 - (void)windowDidBecomeKey:(NSNotification *)notification {
@@ -460,7 +458,11 @@ static NSCursor *cursorFromSelector(SEL selector, SEL fallback = nil) {
 
 @end
 
+#ifdef USE_OPENGL_LEGACY
 @interface GodotContentView : NSOpenGLView <NSTextInputClient> {
+#else
+@interface GodotContentView : NSView <NSTextInputClient> {
+#endif
 	NSTrackingArea *trackingArea;
 	NSMutableAttributedString *markedText;
 	bool imeInputEventInProgress;
@@ -478,12 +480,23 @@ static NSCursor *cursorFromSelector(SEL selector, SEL fallback = nil) {
 	}
 }
 
+#if defined(USE_OPENGL_ANGLE)
+- (CALayer *)makeBackingLayer {
+	CALayer *layer = [[CAMetalLayer class] layer];
+	return layer;
+}
+#endif
+
 - (BOOL)wantsUpdateLayer {
 	return YES;
 }
 
 - (void)updateLayer {
+#if defined(USE_OPENGL_LEGACY)
 	[OS_OSX::singleton->context update];
+#else
+	[super updateLayer];
+#endif
 }
 
 - (id)init {
@@ -1596,15 +1609,7 @@ Error OS_OSX::initialize(const VideoMode &p_desired, int p_video_driver, int p_a
 	window_size.width = p_desired.width;
 	window_size.height = p_desired.height;
 
-	if (displayScale > 1.0) {
-		[window_view setWantsBestResolutionOpenGLSurface:YES];
-		//if (current_videomode.resizable)
-		[window_object setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
-	} else {
-		[window_view setWantsBestResolutionOpenGLSurface:NO];
-	}
-
-	//[window_object setTitle:[NSString stringWithUTF8String:"GodotEnginies"]];
+	[window_object setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
 	[window_object setContentView:window_view];
 	[window_object setDelegate:window_delegate];
 	if (!is_no_window_mode_enabled()) {
@@ -1613,77 +1618,34 @@ Error OS_OSX::initialize(const VideoMode &p_desired, int p_video_driver, int p_a
 	}
 
 	[window_object setRestorable:NO];
+	[window_object setColorSpace:[NSColorSpace sRGBColorSpace]];
 
-	unsigned int attributeCount = 0;
-
-	// OS X needs non-zero color size, so set reasonable values
-	int colorBits = 32;
-
-	// Fail if a robustness strategy was requested
-
-#define ADD_ATTR(x) \
-	{ attributes[attributeCount++] = x; }
-#define ADD_ATTR2(x, y) \
-	{                   \
-		ADD_ATTR(x);    \
-		ADD_ATTR(y);    \
-	}
-
-	// Arbitrary array size here
-	NSOpenGLPixelFormatAttribute attributes[40];
-
-	ADD_ATTR(NSOpenGLPFADoubleBuffer);
-	ADD_ATTR(NSOpenGLPFAClosestPolicy);
-
-	if (p_video_driver == VIDEO_DRIVER_GLES2) {
-		ADD_ATTR2(NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersionLegacy);
+#if defined(USE_OPENGL_LEGACY)
+	if (displayScale > 1.0) {
+		[window_view setWantsBestResolutionOpenGLSurface:YES];
 	} else {
-		//we now need OpenGL 3 or better, maybe even change this to 3_3Core ?
-		ADD_ATTR2(NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core);
+		[window_view setWantsBestResolutionOpenGLSurface:NO];
 	}
 
-	ADD_ATTR2(NSOpenGLPFAColorSize, colorBits);
+	NSOpenGLPixelFormatAttribute attributes[] = {
+		NSOpenGLPFADoubleBuffer,
+		NSOpenGLPFAClosestPolicy,
+		NSOpenGLPFAOpenGLProfile, (p_video_driver == VIDEO_DRIVER_GLES2) ? NSOpenGLProfileVersionLegacy : NSOpenGLProfileVersion3_2Core,
+		NSOpenGLPFAColorSize, 32,
+		NSOpenGLPFADepthSize, 24,
+		NSOpenGLPFAStencilSize, 8,
+		0
+	};
 
-	/*
-	if (fbconfig->alphaBits > 0)
-		ADD_ATTR2(NSOpenGLPFAAlphaSize, fbconfig->alphaBits);
-*/
-
-	ADD_ATTR2(NSOpenGLPFADepthSize, 24);
-
-	ADD_ATTR2(NSOpenGLPFAStencilSize, 8);
-
-	/*
-	if (fbconfig->stereo)
-		ADD_ATTR(NSOpenGLPFAStereo);
-*/
-
-	/*
-	if (fbconfig->samples > 0) {
-		ADD_ATTR2(NSOpenGLPFASampleBuffers, 1);
-		ADD_ATTR2(NSOpenGLPFASamples, fbconfig->samples);
-	}
-*/
-
-	// NOTE: All NSOpenGLPixelFormats on the relevant cards support sRGB
-	//       framebuffer, so there's no need (and no way) to request it
-
-	ADD_ATTR(0);
-
-#undef ADD_ATTR
-#undef ADD_ATTR2
-
-	pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
+	NSOpenGLPixelFormat *pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
 	ERR_FAIL_COND_V(pixelFormat == nil, ERR_UNAVAILABLE);
 
 	context = [[NSOpenGLContext alloc] initWithFormat:pixelFormat shareContext:nil];
-
 	ERR_FAIL_COND_V(context == nil, ERR_UNAVAILABLE);
 
 	[window_view setOpenGLContext:context];
 
 	context_offscreen = [[NSOpenGLContext alloc] initWithFormat:pixelFormat shareContext:nil];
-
 	[context makeCurrentContext];
 
 	GLint dim[2];
@@ -1691,6 +1653,88 @@ Error OS_OSX::initialize(const VideoMode &p_desired, int p_video_driver, int p_a
 	dim[1] = window_size.height;
 	CGLSetParameter((CGLContextObj)[context CGLContextObj], kCGLCPSurfaceBackingSize, &dim[0]);
 	CGLEnable((CGLContextObj)[context CGLContextObj], kCGLCESurfaceBackingSize);
+#elif defined(USE_OPENGL_ANGLE)
+	CALayer *layer = [window_view layer];
+	if (layer) {
+		layer.contentsScale = displayScale;
+	}
+
+	EGLint angle_platform_type = EGL_PLATFORM_ANGLE_TYPE_METAL_ANGLE;
+
+	List<String> args = get_cmdline_args();
+	for (const List<String>::Element *E = args.front(); E; E = E->next()) {
+		if (E->get() == "--angle-platform-type" && E->next()) {
+			String cmd = E->next()->get().to_lower();
+			if (cmd == "metal") {
+				angle_platform_type = EGL_PLATFORM_ANGLE_TYPE_METAL_ANGLE;
+			} else if (cmd == "opengl") {
+				angle_platform_type = EGL_PLATFORM_ANGLE_TYPE_OPENGL_ANGLE;
+			} else {
+				WARN_PRINT("Invalid ANGLE platform type, it should be \"metal\" or \"opengl\".");
+			}
+		}
+	}
+
+	EGLAttrib display_attributes[] = {
+		EGL_PLATFORM_ANGLE_TYPE_ANGLE,
+		angle_platform_type,
+		EGL_NONE,
+	};
+
+	display = eglGetPlatformDisplay(EGL_PLATFORM_ANGLE_ANGLE, nullptr, display_attributes);
+	if (display == EGL_NO_DISPLAY) {
+		WARN_PRINT("Can't ANGLE display with the selected platform type, falling back to another one.");
+		if (display_attributes[1] == EGL_PLATFORM_ANGLE_TYPE_METAL_ANGLE) {
+			display_attributes[1] = EGL_PLATFORM_ANGLE_TYPE_OPENGL_ANGLE;
+		} else {
+			display_attributes[1] = EGL_PLATFORM_ANGLE_TYPE_METAL_ANGLE;
+		}
+		display = eglGetPlatformDisplay(EGL_PLATFORM_ANGLE_ANGLE, nullptr, display_attributes);
+	}
+	ERR_FAIL_COND_V(eglInitialize(display, nullptr, nullptr) == EGL_FALSE, ERR_UNAVAILABLE);
+
+	EGLint config_attribs[] = {
+		EGL_BUFFER_SIZE,
+		32,
+		EGL_DEPTH_SIZE,
+		24,
+		EGL_STENCIL_SIZE,
+		8,
+		EGL_SAMPLE_BUFFERS,
+		0,
+		EGL_NONE,
+	};
+
+	EGLint surface_attribs[] = {
+		EGL_NONE,
+	};
+
+	EGLint num_configs = 0;
+	EGLConfig config = nullptr;
+	EGLint context_attribs[]{
+		EGL_CONTEXT_CLIENT_VERSION,
+		(p_video_driver == VIDEO_DRIVER_GLES2) ? 2 : 3,
+		EGL_NONE,
+	};
+
+	ERR_FAIL_COND_V(eglGetConfigs(display, NULL, 0, &num_configs) == EGL_FALSE, ERR_UNAVAILABLE);
+	ERR_FAIL_COND_V(eglChooseConfig(display, config_attribs, &config, 1, &num_configs) == EGL_FALSE, ERR_UNAVAILABLE);
+
+	surface = eglCreateWindowSurface(display, config, (void *)layer, surface_attribs);
+	ERR_FAIL_COND_V(surface == EGL_NO_SURFACE, ERR_UNAVAILABLE);
+
+	context = eglCreateContext(display, config, EGL_NO_CONTEXT, context_attribs);
+	ERR_FAIL_COND_V(context == EGL_NO_CONTEXT, ERR_UNAVAILABLE);
+
+	context_offscreen = eglCreateContext(display, config, EGL_NO_CONTEXT, context_attribs);
+	ERR_FAIL_COND_V(context_offscreen == EGL_NO_CONTEXT, ERR_UNAVAILABLE);
+
+	eglMakeCurrent(display, surface, surface, context);
+
+	if (layer) {
+		layer.contentsScale = displayScale;
+	}
+#endif
 
 	set_use_vsync(p_desired.use_vsync);
 
@@ -1791,6 +1835,23 @@ Error OS_OSX::initialize(const VideoMode &p_desired, int p_video_driver, int p_a
 void OS_OSX::finalize() {
 #ifdef COREMIDI_ENABLED
 	midi_driver.close();
+#endif
+
+#if defined(USE_OPENGL_ANGLE)
+	eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+
+	if (surface != EGL_NO_SURFACE) {
+		eglDestroySurface(display, surface);
+	}
+	if (context != EGL_NO_CONTEXT) {
+		eglDestroyContext(display, context);
+	}
+	if (context_offscreen != EGL_NO_CONTEXT) {
+		eglDestroyContext(display, context_offscreen);
+	}
+	if (display != EGL_NO_DISPLAY) {
+		eglTerminate(display);
+	}
 #endif
 
 	CFNotificationCenterRemoveObserver(CFNotificationCenterGetDistributedCenter(), NULL, kTISNotifySelectedKeyboardInputSourceChanged, NULL);
@@ -2400,11 +2461,21 @@ String OS_OSX::get_clipboard() const {
 }
 
 void OS_OSX::release_rendering_thread() {
+#if defined(USE_OPENGL_LEGACY)
 	[NSOpenGLContext clearCurrentContext];
+#endif
+#if defined(USE_OPENGL_ANGLE)
+	eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+#endif
 }
 
 void OS_OSX::make_rendering_thread() {
+#if defined(USE_OPENGL_LEGACY)
 	[context makeCurrentContext];
+#endif
+#if defined(USE_OPENGL_ANGLE)
+	eglMakeCurrent(display, surface, surface, context);
+#endif
 }
 
 Error OS_OSX::shell_open(String p_uri) {
@@ -2424,7 +2495,12 @@ String OS_OSX::get_locale() const {
 }
 
 void OS_OSX::swap_buffers() {
+#if defined(USE_OPENGL_LEGACY)
 	[context flushBuffer];
+#endif
+#if defined(USE_OPENGL_ANGLE)
+	eglSwapBuffers(display, surface);
+#endif
 }
 
 void OS_OSX::wm_minimized(bool p_minimized) {
@@ -2446,15 +2522,29 @@ void OS_OSX::get_fullscreen_mode_list(List<VideoMode> *p_list, int p_screen) con
 }
 
 bool OS_OSX::is_offscreen_gl_available() const {
+#if defined(USE_OPENGL_LEGACY)
 	return context_offscreen != nil;
+#endif
+#if defined(USE_OPENGL_ANGLE)
+	return context_offscreen != EGL_NO_CONTEXT;
+#endif
 }
 
 void OS_OSX::set_offscreen_gl_current(bool p_current) {
+#if defined(USE_OPENGL_LEGACY)
 	if (p_current) {
 		[context_offscreen makeCurrentContext];
 	} else {
 		[NSOpenGLContext clearCurrentContext];
 	}
+#endif
+#if defined(USE_OPENGL_ANGLE)
+	if (p_current) {
+		eglMakeCurrent(display, surface, surface, context_offscreen);
+	} else {
+		eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+	}
+#endif
 }
 
 int OS_OSX::get_screen_count() const {
@@ -2905,22 +2995,39 @@ void OS_OSX::set_window_per_pixel_transparency_enabled(bool p_enabled) {
 		return;
 	if (layered_window != p_enabled) {
 		if (p_enabled) {
-			GLint opacity = 0;
 			[window_object setBackgroundColor:[NSColor clearColor]];
 			[window_object setOpaque:NO];
 			[window_object setHasShadow:NO];
+#if defined(USE_OPENGL_LEGACY)
+			GLint opacity = 0;
 			[context setValues:&opacity forParameter:NSOpenGLContextParameterSurfaceOpacity];
+#endif
 			layered_window = true;
+#if defined(USE_OPENGL_ANGLE)
+			CALayer *layer = [window_view layer];
+			if (layer) {
+				[layer setOpaque:NO];
+			}
+#endif
 		} else {
-			GLint opacity = 1;
 			[window_object setBackgroundColor:[NSColor colorWithCalibratedWhite:1 alpha:1]];
 			[window_object setOpaque:YES];
 			[window_object setHasShadow:YES];
+#if defined(USE_OPENGL_LEGACY)
+			GLint opacity = 1;
 			[context setValues:&opacity forParameter:NSOpenGLContextParameterSurfaceOpacity];
+#endif
 			layered_window = false;
+#if defined(USE_OPENGL_ANGLE)
+			CALayer *layer = [window_view layer];
+			if (layer) {
+				[layer setOpaque:YES];
+			}
+#endif
 		}
+#if defined(USE_OPENGL_LEGACY)
 		[context update];
-
+#endif
 		if (!is_no_window_mode_enabled()) {
 			// Force resize window frame to update OpenGL context.
 			NSRect frameRect = [window_object frame];
@@ -3458,19 +3565,25 @@ Error OS_OSX::move_to_trash(const String &p_path) {
 }
 
 void OS_OSX::_set_use_vsync(bool p_enable) {
+#if defined(USE_OPENGL_LEGACY)
 	CGLContextObj ctx = CGLGetCurrentContext();
 	if (ctx) {
 		GLint swapInterval = p_enable ? 1 : 0;
 		CGLSetParameter(ctx, kCGLCPSwapInterval, &swapInterval);
 	}
+#endif
+#if defined(USE_OPENGL_ANGLE)
+	if (!p_enable) {
+		eglSwapInterval(display, 0);
+	} else {
+		eglSwapInterval(display, 1);
+	}
+#endif
 }
 
 OS_OSX *OS_OSX::singleton = NULL;
 
 OS_OSX::OS_OSX() {
-	context = nullptr;
-	context_offscreen = nullptr;
-
 	memset(cursors, 0, sizeof(cursors));
 	key_event_pos = 0;
 	mouse_mode = OS::MOUSE_MODE_VISIBLE;
@@ -3485,16 +3598,6 @@ OS_OSX::OS_OSX() {
 	ERR_FAIL_COND(!eventSource);
 
 	CGEventSourceSetLocalEventsSuppressionInterval(eventSource, 0.0);
-
-	/*
-	if (pthread_key_create(&_Godot.nsgl.current, NULL) != 0) {
-		_GodotInputError(Godot_PLATFORM_ERROR, "NSGL: Failed to create context TLS");
-		return GL_FALSE;
-	}
-*/
-
-	framework = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.opengl"));
-	ERR_FAIL_COND(!framework);
 
 	// Implicitly create shared NSApplication instance
 	[GodotApplication sharedApplication];

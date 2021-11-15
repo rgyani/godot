@@ -4,7 +4,9 @@ Import("env")
 
 thirdparty_obj = []
 
-if env["platform"] in ["haiku", "osx", "windows", "x11"]:
+if (env["platform"] in ["haiku", "windows", "x11"]) or (
+    env["platform"] == "osx" and env["opengl_implementation"] == "legacy"
+):
     # Thirdparty source files
     thirdparty_dir = "#thirdparty/glad/"
     thirdparty_sources = [

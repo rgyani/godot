@@ -94,7 +94,13 @@ GLuint RasterizerStorageGLES2::system_fbo = 0;
 #include <dlfcn.h> // needed to load extensions
 #endif
 
-#ifdef IPHONE_ENABLED
+#if defined(USE_OPENGL_ANGLE)
+
+#include <GLES2/gl2ext.h>
+#define glRenderbufferStorageMultisample glRenderbufferStorageMultisampleEXT
+#define glFramebufferTexture2DMultisample glFramebufferTexture2DMultisampleEXT
+
+#elif defined(IPHONE_ENABLED)
 
 #include <OpenGLES/ES2/glext.h>
 //void *glRenderbufferStorageMultisampleAPPLE;

@@ -30,6 +30,12 @@
 
 #include <alloca.h>
 
+#if defined(USE_OPENGL_ANGLE)
+#define GLES3_INCLUDE_H "GLES3/gl3.h"
+#define GLES2_INCLUDE_H "GLES2/gl2.h"
+#else
 #define GLES3_INCLUDE_H "thirdparty/glad/glad/glad.h"
 #define GLES2_INCLUDE_H "thirdparty/glad/glad/glad.h"
+#endif
+
 #define PTHREAD_RENAME_SELF
