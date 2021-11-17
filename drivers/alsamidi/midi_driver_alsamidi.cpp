@@ -97,7 +97,7 @@ void MIDIDriverALSAMidi::thread_func(void *p_udata) {
 					if (byte & 0x80) {
 						// Flush previous packet if there is any
 						if (bytes) {
-							md->receive_input_packet(timestamp, buffer, bytes);
+							md->receive_input_packet(i, timestamp, buffer, bytes);
 							bytes = 0;
 						}
 						expected_size = get_message_size(byte);
@@ -110,7 +110,7 @@ void MIDIDriverALSAMidi::thread_func(void *p_udata) {
 						buffer[bytes++] = byte;
 						// If we know the size of the current packet receive it if it reached the expected size
 						if (bytes >= expected_size) {
-							md->receive_input_packet(timestamp, buffer, bytes);
+							md->receive_input_packet(i, timestamp, buffer, bytes);
 							bytes = 0;
 						}
 					}
