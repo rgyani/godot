@@ -49,15 +49,19 @@ void Popup::_initialize_visible_parents() {
 		parent_window = parent_window->get_parent_visible_window();
 		if (parent_window) {
 			visible_parents.push_back(parent_window);
-			parent_window->connect("focus_entered", callable_mp(this, &Popup::_parent_focused));
+			parent_window->connect("focus_exited", callable_mp(this, &Popup::_parent_un_focused));
+			parent_window->connect("window_input", callable_mp(this, &Popup::_input_from_parent));
 			parent_window->connect("tree_exited", callable_mp(this, &Popup::_deinitialize_visible_parents));
 		}
 	}
 }
 
 void Popup::_deinitialize_visible_parents() {
+	popup_timer->stop();
+
 	for (uint32_t i = 0; i < visible_parents.size(); ++i) {
-		visible_parents[i]->disconnect("focus_entered", callable_mp(this, &Popup::_parent_focused));
+		visible_parents[i]->disconnect("focus_exited", callable_mp(this, &Popup::_parent_un_focused));
+		visible_parents[i]->disconnect("window_input", callable_mp(this, &Popup::_input_from_parent));
 		visible_parents[i]->disconnect("tree_exited", callable_mp(this, &Popup::_deinitialize_visible_parents));
 	}
 
@@ -68,18 +72,16 @@ void Popup::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_VISIBILITY_CHANGED: {
 			if (is_visible()) {
-				_initialize_visible_parents();
+				if (popup_timer->is_stopped()) {
+					popup_timer->start();
+				}
+				popped_up = true;
 			} else {
 				_deinitialize_visible_parents();
 				emit_signal(SNAME("popup_hide"));
 				popped_up = false;
 			}
 
-		} break;
-		case NOTIFICATION_WM_WINDOW_FOCUS_IN: {
-			if (has_focus()) {
-				popped_up = true;
-			}
 		} break;
 		case NOTIFICATION_EXIT_TREE: {
 			_deinitialize_visible_parents();
@@ -93,8 +95,13 @@ void Popup::_notification(int p_what) {
 	}
 }
 
-void Popup::_parent_focused() {
-	if (popped_up && close_on_parent_focus) {
+void Popup::_parent_un_focused() {
+	_close_pressed();
+}
+
+void Popup::_input_from_parent(const Ref<InputEvent> &p_event) {
+	Ref<InputEventMouseButton> mb = p_event;
+	if (mb.is_valid() && mb->is_pressed() && popped_up && close_on_parent_focus) {
 		_close_pressed();
 	}
 }
@@ -182,8 +189,15 @@ Popup::Popup() {
 	set_wrap_controls(true);
 	set_visible(false);
 	set_transient(true);
+	set_flag(FLAG_NO_FOCUS, true);
 	set_flag(FLAG_BORDERLESS, true);
 	set_flag(FLAG_RESIZE_DISABLED, true);
+
+	popup_timer = memnew(Timer);
+	popup_timer->set_wait_time(0.1);
+	popup_timer->set_one_shot(true);
+	popup_timer->connect("timeout", callable_mp(this, &Popup::_initialize_visible_parents));
+	add_child(popup_timer, false, INTERNAL_MODE_FRONT);
 
 	connect("window_input", callable_mp(this, &Popup::_input_from_window));
 }

@@ -31,6 +31,7 @@
 #ifndef POPUP_H
 #define POPUP_H
 
+#include "scene/main/timer.h"
 #include "scene/main/window.h"
 
 #include "core/templates/local_vector.h"
@@ -40,6 +41,7 @@ class Panel;
 class Popup : public Window {
 	GDCLASS(Popup, Window);
 
+	Timer *popup_timer = nullptr;
 	LocalVector<Window *> visible_parents;
 	bool popped_up = false;
 	bool close_on_parent_focus = true;
@@ -49,7 +51,8 @@ class Popup : public Window {
 	void _initialize_visible_parents();
 	void _deinitialize_visible_parents();
 
-	void _parent_focused();
+	void _parent_un_focused();
+	void _input_from_parent(const Ref<InputEvent> &p_event);
 
 protected:
 	void _close_pressed();
