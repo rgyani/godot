@@ -48,7 +48,7 @@ class FontData : public Resource {
 	size_t data_size = 0;
 	PackedByteArray data;
 
-	bool antialiased = true;
+	TextServer::FontAntialiasing antialiasing = TextServer::FONT_ANTIALIASING_GRAY;
 	bool msdf = false;
 	int msdf_pixel_range = 16;
 	int msdf_size = 48;
@@ -97,8 +97,8 @@ public:
 	virtual void set_font_style(uint32_t p_style);
 	virtual uint32_t get_font_style() const;
 
-	virtual void set_antialiased(bool p_antialiased);
-	virtual bool is_antialiased() const;
+	virtual void set_antialiasing(TextServer::FontAntialiasing p_antialiasing);
+	virtual TextServer::FontAntialiasing get_antialiasing() const;
 
 	virtual void set_multichannel_signed_distance_field(bool p_msdf);
 	virtual bool is_multichannel_signed_distance_field() const;

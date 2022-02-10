@@ -53,7 +53,7 @@ _FORCE_INLINE_ void FontData::_ensure_rid(int p_cache_index) const {
 	if (unlikely(!cache[p_cache_index].is_valid())) {
 		cache.write[p_cache_index] = TS->create_font();
 		TS->font_set_data_ptr(cache[p_cache_index], data_ptr, data_size);
-		TS->font_set_antialiased(cache[p_cache_index], antialiased);
+		TS->font_set_antialiasing(cache[p_cache_index], antialiasing);
 		TS->font_set_multichannel_signed_distance_field(cache[p_cache_index], msdf);
 		TS->font_set_msdf_pixel_range(cache[p_cache_index], msdf_pixel_range);
 		TS->font_set_msdf_size(cache[p_cache_index], msdf_size);
@@ -71,8 +71,8 @@ void FontData::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_data", "data"), &FontData::set_data);
 	ClassDB::bind_method(D_METHOD("get_data"), &FontData::get_data);
 
-	ClassDB::bind_method(D_METHOD("set_antialiased", "antialiased"), &FontData::set_antialiased);
-	ClassDB::bind_method(D_METHOD("is_antialiased"), &FontData::is_antialiased);
+	ClassDB::bind_method(D_METHOD("set_antialiasing", "antialiasing"), &FontData::set_antialiasing);
+	ClassDB::bind_method(D_METHOD("get_antialiasing"), &FontData::get_antialiasing);
 
 	ClassDB::bind_method(D_METHOD("set_font_name", "name"), &FontData::set_font_name);
 	ClassDB::bind_method(D_METHOD("get_font_name"), &FontData::get_font_name);
@@ -200,7 +200,7 @@ void FontData::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_supported_variation_list"), &FontData::get_supported_variation_list);
 
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_BYTE_ARRAY, "data", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE), "set_data", "get_data");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "antialiased", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE), "set_antialiased", "is_antialiased");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "antialiasing", PROPERTY_HINT_ENUM, "None,Grayscale,LCD sub-pixel (horizontal RGB),LCD sub-pixel (horizontal BGR),LCD sub-pixel (vertical RGB),LCD sub-pixel (vertical BGR)", PROPERTY_USAGE_STORAGE), "set_antialiasing", "get_antialiasing");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "font_name", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE), "set_font_name", "get_font_name");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "style_name", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE), "set_font_style_name", "get_font_style_name");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "font_style", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE), "set_font_style", "get_font_style");
@@ -426,7 +426,7 @@ void FontData::reset_state() {
 	data_size = 0;
 	cache.clear();
 
-	antialiased = true;
+	antialiasing = TextServer::FONT_ANTIALIASING_GRAY;
 	msdf = false;
 	force_autohinter = false;
 	hinting = TextServer::HINTING_LIGHT;
@@ -716,7 +716,7 @@ void FontData::_convert_mono_4bit(Ref<Image> &p_source, int p_page, int p_ch, in
 Error FontData::load_bitmap_font(const String &p_path) {
 	reset_state();
 
-	antialiased = false;
+	antialiasing = TextServer::FONT_ANTIALIASING_NONE;
 	msdf = false;
 	force_autohinter = false;
 	hinting = TextServer::HINTING_NONE;
@@ -1259,19 +1259,19 @@ uint32_t FontData::get_font_style() const {
 	return TS->font_get_style(cache[0]);
 }
 
-void FontData::set_antialiased(bool p_antialiased) {
-	if (antialiased != p_antialiased) {
-		antialiased = p_antialiased;
+void FontData::set_antialiasing(TextServer::FontAntialiasing p_antialiasing) {
+	if (antialiasing != p_antialiasing) {
+		antialiasing = p_antialiasing;
 		for (int i = 0; i < cache.size(); i++) {
 			_ensure_rid(i);
-			TS->font_set_antialiased(cache[i], antialiased);
+			TS->font_set_antialiasing(cache[i], antialiasing);
 		}
 		emit_changed();
 	}
 }
 
-bool FontData::is_antialiased() const {
-	return antialiased;
+TextServer::FontAntialiasing FontData::get_antialiasing() const {
+	return antialiasing;
 }
 
 void FontData::set_multichannel_signed_distance_field(bool p_msdf) {

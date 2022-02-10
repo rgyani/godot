@@ -132,6 +132,15 @@ public:
 		FONT_FIXED_WIDTH = 1 << 2,
 	};
 
+	enum FontAntialiasing {
+		FONT_ANTIALIASING_NONE,
+		FONT_ANTIALIASING_GRAY,
+		FONT_ANTIALIASING_LCD_RGB,
+		FONT_ANTIALIASING_LCD_BGR,
+		FONT_ANTIALIASING_LCD_V_RGB,
+		FONT_ANTIALIASING_LCD_V_BGR,
+	};
+
 	void _draw_hex_code_box_number(RID p_canvas, int p_size, const Vector2 &p_pos, uint8_t p_index, const Color &p_color) const;
 
 protected:
@@ -227,8 +236,8 @@ public:
 	virtual void font_set_style_name(RID p_font_rid, const String &p_name) = 0;
 	virtual String font_get_style_name(RID p_font_rid) const = 0;
 
-	virtual void font_set_antialiased(RID p_font_rid, bool p_antialiased) = 0;
-	virtual bool font_is_antialiased(RID p_font_rid) const = 0;
+	virtual void font_set_antialiasing(RID p_font_rid, FontAntialiasing p_antialiasing) = 0;
+	virtual FontAntialiasing font_get_antialiasing(RID p_font_rid) const = 0;
 
 	virtual void font_set_multichannel_signed_distance_field(RID p_font_rid, bool p_msdf) = 0;
 	virtual bool font_is_multichannel_signed_distance_field(RID p_font_rid) const = 0;
@@ -555,6 +564,7 @@ VARIANT_ENUM_CAST(TextServer::Feature);
 VARIANT_ENUM_CAST(TextServer::ContourPointTag);
 VARIANT_ENUM_CAST(TextServer::SpacingType);
 VARIANT_ENUM_CAST(TextServer::FontStyle);
+VARIANT_ENUM_CAST(TextServer::FontAntialiasing);
 
 GDVIRTUAL_NATIVE_PTR(Glyph);
 GDVIRTUAL_NATIVE_PTR(CaretInfo);

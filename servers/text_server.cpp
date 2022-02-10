@@ -217,8 +217,8 @@ void TextServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("font_set_style_name", "font_rid", "name"), &TextServer::font_set_style_name);
 	ClassDB::bind_method(D_METHOD("font_get_style_name", "font_rid"), &TextServer::font_get_style_name);
 
-	ClassDB::bind_method(D_METHOD("font_set_antialiased", "font_rid", "antialiased"), &TextServer::font_set_antialiased);
-	ClassDB::bind_method(D_METHOD("font_is_antialiased", "font_rid"), &TextServer::font_is_antialiased);
+	ClassDB::bind_method(D_METHOD("font_set_antialiasing", "font_rid", "antialiasing"), &TextServer::font_set_antialiasing);
+	ClassDB::bind_method(D_METHOD("font_get_antialiasing", "font_rid"), &TextServer::font_get_antialiasing);
 
 	ClassDB::bind_method(D_METHOD("font_set_multichannel_signed_distance_field", "font_rid", "msdf"), &TextServer::font_set_multichannel_signed_distance_field);
 	ClassDB::bind_method(D_METHOD("font_is_multichannel_signed_distance_field", "font_rid"), &TextServer::font_is_multichannel_signed_distance_field);
@@ -505,6 +505,14 @@ void TextServer::_bind_methods() {
 	BIND_ENUM_CONSTANT(FONT_BOLD);
 	BIND_ENUM_CONSTANT(FONT_ITALIC);
 	BIND_ENUM_CONSTANT(FONT_FIXED_WIDTH);
+
+	/* Font AA */
+	BIND_ENUM_CONSTANT(FONT_ANTIALIASING_NONE);
+	BIND_ENUM_CONSTANT(FONT_ANTIALIASING_GRAY);
+	BIND_ENUM_CONSTANT(FONT_ANTIALIASING_LCD_RGB);
+	BIND_ENUM_CONSTANT(FONT_ANTIALIASING_LCD_BGR);
+	BIND_ENUM_CONSTANT(FONT_ANTIALIASING_LCD_V_RGB);
+	BIND_ENUM_CONSTANT(FONT_ANTIALIASING_LCD_V_BGR);
 }
 
 Vector2 TextServer::get_hex_code_box_size(int p_size, char32_t p_index) const {

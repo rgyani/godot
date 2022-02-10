@@ -64,8 +64,8 @@ void TextServerExtension::_bind_methods() {
 	GDVIRTUAL_BIND(_font_set_style_name, "font_rid", "name_style");
 	GDVIRTUAL_BIND(_font_get_style_name, "font_rid");
 
-	GDVIRTUAL_BIND(_font_set_antialiased, "font_rid", "antialiased");
-	GDVIRTUAL_BIND(_font_is_antialiased, "font_rid");
+	GDVIRTUAL_BIND(_font_set_antialiasing, "font_rid", "antialiasing");
+	GDVIRTUAL_BIND(_font_get_antialiasing, "font_rid");
 
 	GDVIRTUAL_BIND(_font_set_multichannel_signed_distance_field, "font_rid", "msdf");
 	GDVIRTUAL_BIND(_font_is_multichannel_signed_distance_field, "font_rid");
@@ -428,16 +428,16 @@ String TextServerExtension::font_get_name(RID p_font_rid) const {
 	return String();
 }
 
-void TextServerExtension::font_set_antialiased(RID p_font_rid, bool p_antialiased) {
-	GDVIRTUAL_CALL(_font_set_antialiased, p_font_rid, p_antialiased);
+void TextServerExtension::font_set_antialiasing(RID p_font_rid, TextServer::FontAntialiasing p_antialiasing) {
+	GDVIRTUAL_CALL(_font_set_antialiasing, p_font_rid, p_antialiasing);
 }
 
-bool TextServerExtension::font_is_antialiased(RID p_font_rid) const {
-	bool ret;
-	if (GDVIRTUAL_CALL(_font_is_antialiased, p_font_rid, ret)) {
+TextServer::FontAntialiasing TextServerExtension::font_get_antialiasing(RID p_font_rid) const {
+	TextServer::FontAntialiasing ret;
+	if (GDVIRTUAL_CALL(_font_get_antialiasing, p_font_rid, ret)) {
 		return ret;
 	}
-	return false;
+	return TextServer::FONT_ANTIALIASING_NONE;
 }
 
 void TextServerExtension::font_set_multichannel_signed_distance_field(RID p_font_rid, bool p_msdf) {

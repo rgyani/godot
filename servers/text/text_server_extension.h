@@ -99,10 +99,10 @@ public:
 	GDVIRTUAL2(_font_set_style_name, RID, const String &);
 	GDVIRTUAL1RC(String, _font_get_style_name, RID);
 
-	virtual void font_set_antialiased(RID p_font_rid, bool p_antialiased) override;
-	virtual bool font_is_antialiased(RID p_font_rid) const override;
-	GDVIRTUAL2(_font_set_antialiased, RID, bool);
-	GDVIRTUAL1RC(bool, _font_is_antialiased, RID);
+	virtual void font_set_antialiasing(RID p_font_rid, TextServer::FontAntialiasing p_antialiasing) override;
+	virtual TextServer::FontAntialiasing font_get_antialiasing(RID p_font_rid) const override;
+	GDVIRTUAL2(_font_set_antialiasing, RID, TextServer::FontAntialiasing);
+	GDVIRTUAL1RC(TextServer::FontAntialiasing, _font_get_antialiasing, RID);
 
 	virtual void font_set_multichannel_signed_distance_field(RID p_font_rid, bool p_msdf) override;
 	virtual bool font_is_multichannel_signed_distance_field(RID p_font_rid) const override;

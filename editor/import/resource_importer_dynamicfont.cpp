@@ -97,7 +97,7 @@ String ResourceImporterDynamicFont::get_preset_name(int p_idx) const {
 void ResourceImporterDynamicFont::get_import_options(const String &p_path, List<ImportOption> *r_options, int p_preset) const {
 	bool msdf = p_preset == PRESET_MSDF;
 
-	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "antialiased"), true));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "antialiasing", PROPERTY_HINT_ENUM, "None,Grayscale,LCD sub-pixel (horizontal RGB),LCD sub-pixel (horizontal BGR),LCD sub-pixel (vertical RGB),LCD sub-pixel (vertical BGR)"), 1));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "multichannel_signed_distance_field", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_UPDATE_ALL_IF_MODIFIED), (msdf) ? true : false));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "msdf_pixel_range", PROPERTY_HINT_RANGE, "1,100,1"), 8));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "msdf_size", PROPERTY_HINT_RANGE, "1,250,1"), 48));
@@ -171,7 +171,7 @@ void ResourceImporterDynamicFont::show_advanced_options(const String &p_path) {
 Error ResourceImporterDynamicFont::import(const String &p_source_file, const String &p_save_path, const Map<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
 	print_verbose("Importing dynamic font from: " + p_source_file);
 
-	bool antialiased = p_options["antialiased"];
+	int antialiasing = p_options["antialiasing"];
 	bool msdf = p_options["multichannel_signed_distance_field"];
 	int px_range = p_options["msdf_pixel_range"];
 	int px_size = p_options["msdf_size"];
@@ -188,7 +188,7 @@ Error ResourceImporterDynamicFont::import(const String &p_source_file, const Str
 	Ref<FontData> font;
 	font.instantiate();
 	font->set_data(data);
-	font->set_antialiased(antialiased);
+	font->set_antialiasing((TextServer::FontAntialiasing)antialiasing);
 	font->set_multichannel_signed_distance_field(msdf);
 	font->set_msdf_pixel_range(px_range);
 	font->set_msdf_size(px_size);

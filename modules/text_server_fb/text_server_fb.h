@@ -132,7 +132,7 @@ class TextServerFallback : public TextServer {
 	struct FontDataFallback {
 		Mutex mutex;
 
-		bool antialiased = true;
+		TextServer::FontAntialiasing antialiasing = TextServer::FONT_ANTIALIASING_GRAY;
 		bool msdf = false;
 		int msdf_range = 14;
 		int msdf_source_size = 48;
@@ -176,7 +176,7 @@ class TextServerFallback : public TextServer {
 	_FORCE_INLINE_ FontGlyph rasterize_msdf(FontDataFallback *p_font_data, FontDataForSizeFallback *p_data, int p_pixel_range, int p_rect_margin, FT_Outline *outline, const Vector2 &advance) const;
 #endif
 #ifdef MODULE_FREETYPE_ENABLED
-	_FORCE_INLINE_ FontGlyph rasterize_bitmap(FontDataForSizeFallback *p_data, int p_rect_margin, FT_Bitmap bitmap, int yofs, int xofs, const Vector2 &advance) const;
+	_FORCE_INLINE_ FontGlyph rasterize_bitmap(FontDataForSizeFallback *p_data, int p_rect_margin, FT_Bitmap bitmap, int yofs, int xofs, const Vector2 &advance, bool p_bgra) const;
 #endif
 	_FORCE_INLINE_ bool _ensure_glyph(FontDataFallback *p_font_data, const Vector2i &p_size, int32_t p_glyph) const;
 	_FORCE_INLINE_ bool _ensure_cache_for_size(FontDataFallback *p_font_data, const Vector2i &p_size) const;
@@ -269,8 +269,8 @@ public:
 	virtual void font_set_name(RID p_font_rid, const String &p_name) override;
 	virtual String font_get_name(RID p_font_rid) const override;
 
-	virtual void font_set_antialiased(RID p_font_rid, bool p_antialiased) override;
-	virtual bool font_is_antialiased(RID p_font_rid) const override;
+	virtual void font_set_antialiasing(RID p_font_rid, TextServer::FontAntialiasing p_antialiasing) override;
+	virtual TextServer::FontAntialiasing font_get_antialiasing(RID p_font_rid) const override;
 
 	virtual void font_set_multichannel_signed_distance_field(RID p_font_rid, bool p_msdf) override;
 	virtual bool font_is_multichannel_signed_distance_field(RID p_font_rid) const override;

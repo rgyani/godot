@@ -1006,9 +1006,28 @@ _FORCE_INLINE_ TextServerAdvanced::FontGlyph TextServerAdvanced::rasterize_msdf(
 #endif
 
 #ifdef MODULE_FREETYPE_ENABLED
-_FORCE_INLINE_ TextServerAdvanced::FontGlyph TextServerAdvanced::rasterize_bitmap(FontDataForSizeAdvanced *p_data, int p_rect_margin, FT_Bitmap bitmap, int yofs, int xofs, const Vector2 &advance) const {
+_FORCE_INLINE_ TextServerAdvanced::FontGlyph TextServerAdvanced::rasterize_bitmap(FontDataForSizeAdvanced *p_data, int p_rect_margin, FT_Bitmap bitmap, int yofs, int xofs, const Vector2 &advance, bool p_bgra) const {
 	int w = bitmap.width;
 	int h = bitmap.rows;
+	int color_size = 2;
+
+	switch (bitmap.pixel_mode) {
+		case FT_PIXEL_MODE_MONO:
+		case FT_PIXEL_MODE_GRAY: {
+			color_size = 2;
+		} break;
+		case FT_PIXEL_MODE_BGRA: {
+			color_size = 4;
+		} break;
+		case FT_PIXEL_MODE_LCD: {
+			color_size = 4;
+			w /= 3;
+		} break;
+		case FT_PIXEL_MODE_LCD_V: {
+			color_size = 4;
+			h /= 3;
+		} break;
+	}
 
 	int mw = w + p_rect_margin * 2;
 	int mh = h + p_rect_margin * 2;
@@ -1016,7 +1035,6 @@ _FORCE_INLINE_ TextServerAdvanced::FontGlyph TextServerAdvanced::rasterize_bitma
 	ERR_FAIL_COND_V(mw > 4096, FontGlyph());
 	ERR_FAIL_COND_V(mh > 4096, FontGlyph());
 
-	int color_size = bitmap.pixel_mode == FT_PIXEL_MODE_BGRA ? 4 : 2;
 	Image::Format require_format = color_size == 4 ? Image::FORMAT_RGBA8 : Image::FORMAT_LA8;
 
 	FontTexturePosition tex_pos = find_texture_pos_for_glyph(p_data, color_size, require_format, mw, mh);
@@ -1050,6 +1068,34 @@ _FORCE_INLINE_ TextServerAdvanced::FontGlyph TextServerAdvanced::rasterize_bitma
 						wr[ofs + 1] = bitmap.buffer[ofs_color + 1];
 						wr[ofs + 0] = bitmap.buffer[ofs_color + 2];
 						wr[ofs + 3] = bitmap.buffer[ofs_color + 3];
+					} break;
+					case FT_PIXEL_MODE_LCD: {
+						int ofs_color = i * bitmap.pitch + (j * 3);
+						if (p_bgra) {
+							wr[ofs + 0] = bitmap.buffer[ofs_color + 2];
+							wr[ofs + 1] = bitmap.buffer[ofs_color + 1];
+							wr[ofs + 2] = bitmap.buffer[ofs_color + 0];
+							wr[ofs + 3] = 255;
+						} else {
+							wr[ofs + 0] = bitmap.buffer[ofs_color + 0];
+							wr[ofs + 1] = bitmap.buffer[ofs_color + 1];
+							wr[ofs + 2] = bitmap.buffer[ofs_color + 2];
+							wr[ofs + 3] = 255;
+						}
+					} break;
+					case FT_PIXEL_MODE_LCD_V: {
+						int ofs_color = i * bitmap.pitch * 3 + j;
+						if (p_bgra) {
+							wr[ofs + 0] = bitmap.buffer[ofs_color + 0];
+							wr[ofs + 1] = bitmap.buffer[ofs_color + bitmap.pitch];
+							wr[ofs + 2] = bitmap.buffer[ofs_color + bitmap.pitch * 2];
+							wr[ofs + 3] = 255;
+						} else {
+							wr[ofs + 0] = bitmap.buffer[ofs_color + bitmap.pitch * 2];
+							wr[ofs + 1] = bitmap.buffer[ofs_color + bitmap.pitch];
+							wr[ofs + 2] = bitmap.buffer[ofs_color + 0];
+							wr[ofs + 3] = 255;
+						}
 					} break;
 					default:
 						ERR_FAIL_V_MSG(FontGlyph(), "Font uses unsupported pixel format: " + itos(bitmap.pixel_mode) + ".");
@@ -1137,6 +1183,33 @@ _FORCE_INLINE_ bool TextServerAdvanced::_ensure_glyph(FontDataAdvanced *p_font_d
 		FT_Get_Advance(fd->face, p_glyph, flags, &h);
 		FT_Get_Advance(fd->face, p_glyph, flags | FT_LOAD_VERTICAL_LAYOUT, &v);
 
+		FT_Render_Mode aa_mode = FT_RENDER_MODE_NORMAL;
+		bool bgra = false;
+		switch (p_font_data->antialiasing) {
+			case FONT_ANTIALIASING_NONE: {
+				aa_mode = FT_RENDER_MODE_MONO;
+			} break;
+			case FONT_ANTIALIASING_GRAY: {
+				aa_mode = FT_RENDER_MODE_NORMAL;
+			} break;
+			case FONT_ANTIALIASING_LCD_RGB: {
+				aa_mode = FT_RENDER_MODE_LCD;
+				bgra = false;
+			} break;
+			case FONT_ANTIALIASING_LCD_BGR: {
+				aa_mode = FT_RENDER_MODE_LCD;
+				bgra = true;
+			} break;
+			case FONT_ANTIALIASING_LCD_V_RGB: {
+				aa_mode = FT_RENDER_MODE_LCD_V;
+				bgra = false;
+			} break;
+			case FONT_ANTIALIASING_LCD_V_BGR: {
+				aa_mode = FT_RENDER_MODE_LCD_V;
+				bgra = true;
+			} break;
+		}
+
 		int error = FT_Load_Glyph(fd->face, p_glyph, flags);
 		if (error) {
 			fd->glyph_map[p_glyph] = FontGlyph();
@@ -1145,7 +1218,7 @@ _FORCE_INLINE_ bool TextServerAdvanced::_ensure_glyph(FontDataAdvanced *p_font_d
 
 		if (!outline) {
 			if (!p_font_data->msdf) {
-				error = FT_Render_Glyph(fd->face->glyph, p_font_data->antialiased ? FT_RENDER_MODE_NORMAL : FT_RENDER_MODE_MONO);
+				error = FT_Render_Glyph(fd->face->glyph, aa_mode);
 			}
 			FT_GlyphSlot slot = fd->face->glyph;
 			if (!error) {
@@ -1157,7 +1230,7 @@ _FORCE_INLINE_ bool TextServerAdvanced::_ensure_glyph(FontDataAdvanced *p_font_d
 					ERR_FAIL_V_MSG(false, "Compiled without MSDFGEN support!");
 #endif
 				} else {
-					gl = rasterize_bitmap(fd, rect_range, slot->bitmap, slot->bitmap_top, slot->bitmap_left, Vector2((h + (1 << 9)) >> 10, (v + (1 << 9)) >> 10) / 64.0);
+					gl = rasterize_bitmap(fd, rect_range, slot->bitmap, slot->bitmap_top, slot->bitmap_left, Vector2((h + (1 << 9)) >> 10, (v + (1 << 9)) >> 10) / 64.0, bgra);
 				}
 			}
 		} else {
@@ -1177,11 +1250,11 @@ _FORCE_INLINE_ bool TextServerAdvanced::_ensure_glyph(FontDataAdvanced *p_font_d
 			if (FT_Glyph_Stroke(&glyph, stroker, 1) != 0) {
 				goto cleanup_glyph;
 			}
-			if (FT_Glyph_To_Bitmap(&glyph, p_font_data->antialiased ? FT_RENDER_MODE_NORMAL : FT_RENDER_MODE_MONO, nullptr, 1) != 0) {
+			if (FT_Glyph_To_Bitmap(&glyph, aa_mode, nullptr, 1) != 0) {
 				goto cleanup_glyph;
 			}
 			glyph_bitmap = (FT_BitmapGlyph)glyph;
-			gl = rasterize_bitmap(fd, rect_range, glyph_bitmap->bitmap, glyph_bitmap->top, glyph_bitmap->left, Vector2());
+			gl = rasterize_bitmap(fd, rect_range, glyph_bitmap->bitmap, glyph_bitmap->top, glyph_bitmap->left, Vector2(), bgra);
 
 		cleanup_glyph:
 			FT_Done_Glyph(glyph);
@@ -1712,23 +1785,23 @@ String TextServerAdvanced::font_get_name(RID p_font_rid) const {
 	return fd->font_name;
 }
 
-void TextServerAdvanced::font_set_antialiased(RID p_font_rid, bool p_antialiased) {
+void TextServerAdvanced::font_set_antialiasing(RID p_font_rid, TextServer::FontAntialiasing p_antialiasing) {
 	FontDataAdvanced *fd = font_owner.get_or_null(p_font_rid);
 	ERR_FAIL_COND(!fd);
 
 	MutexLock lock(fd->mutex);
-	if (fd->antialiased != p_antialiased) {
+	if (fd->antialiasing != p_antialiasing) {
 		_font_clear_cache(fd);
-		fd->antialiased = p_antialiased;
+		fd->antialiasing = p_antialiasing;
 	}
 }
 
-bool TextServerAdvanced::font_is_antialiased(RID p_font_rid) const {
+TextServer::FontAntialiasing TextServerAdvanced::font_get_antialiasing(RID p_font_rid) const {
 	FontDataAdvanced *fd = font_owner.get_or_null(p_font_rid);
-	ERR_FAIL_COND_V(!fd, false);
+	ERR_FAIL_COND_V(!fd, TextServer::FONT_ANTIALIASING_NONE);
 
 	MutexLock lock(fd->mutex);
-	return fd->antialiased;
+	return fd->antialiasing;
 }
 
 void TextServerAdvanced::font_set_multichannel_signed_distance_field(RID p_font_rid, bool p_msdf) {

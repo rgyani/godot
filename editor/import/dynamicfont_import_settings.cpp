@@ -450,9 +450,9 @@ void DynamicFontImportSettings::_add_glyph_range_item(int32_t p_start, int32_t p
 void DynamicFontImportSettings::_main_prop_changed(const String &p_edited_property) {
 	// Update font preview.
 
-	if (p_edited_property == "antialiased") {
+	if (p_edited_property == "antialiasing") {
 		if (font_preview->get_data_count() > 0) {
-			font_preview->get_data(0)->set_antialiased(import_settings_data->get("antialiased"));
+			font_preview->get_data(0)->set_antialiasing((TextServer::FontAntialiasing)import_settings_data->get("antialiasing").operator int());
 		}
 	} else if (p_edited_property == "multichannel_signed_distance_field") {
 		if (font_preview->get_data_count() > 0) {
@@ -905,7 +905,7 @@ void DynamicFontImportSettings::_notification(int p_what) {
 void DynamicFontImportSettings::_re_import() {
 	Map<StringName, Variant> main_settings;
 
-	main_settings["antialiased"] = import_settings_data->get("antialiased");
+	main_settings["antialiasing"] = import_settings_data->get("antialiasing");
 	main_settings["multichannel_signed_distance_field"] = import_settings_data->get("multichannel_signed_distance_field");
 	main_settings["msdf_pixel_range"] = import_settings_data->get("msdf_pixel_range");
 	main_settings["msdf_size"] = import_settings_data->get("msdf_size");
@@ -1255,7 +1255,7 @@ void DynamicFontImportSettings::open_settings(const String &p_path) {
 	import_settings_data->notify_property_list_changed();
 
 	if (font_preview->get_data_count() > 0) {
-		font_preview->get_data(0)->set_antialiased(import_settings_data->get("antialiased"));
+		font_preview->get_data(0)->set_antialiasing((TextServer::FontAntialiasing)import_settings_data->get("antialiasing").operator int());
 		font_preview->get_data(0)->set_multichannel_signed_distance_field(import_settings_data->get("multichannel_signed_distance_field"));
 		font_preview->get_data(0)->set_msdf_pixel_range(import_settings_data->get("msdf_pixel_range"));
 		font_preview->get_data(0)->set_msdf_size(import_settings_data->get("msdf_size"));
@@ -1313,7 +1313,7 @@ DynamicFontImportSettings *DynamicFontImportSettings::get_singleton() {
 DynamicFontImportSettings::DynamicFontImportSettings() {
 	singleton = this;
 
-	options_general.push_back(ResourceImporter::ImportOption(PropertyInfo(Variant::BOOL, "antialiased"), true));
+	options_general.push_back(ResourceImporter::ImportOption(PropertyInfo(Variant::INT, "antialiasing", PROPERTY_HINT_ENUM, "None,Grayscale,LCD sub-pixel (horizontal RGB),LCD sub-pixel (horizontal BGR),LCD sub-pixel (vertical RGB),LCD sub-pixel (vertical BGR)"), 1));
 	options_general.push_back(ResourceImporter::ImportOption(PropertyInfo(Variant::BOOL, "multichannel_signed_distance_field", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_UPDATE_ALL_IF_MODIFIED), true));
 	options_general.push_back(ResourceImporter::ImportOption(PropertyInfo(Variant::INT, "msdf_pixel_range", PROPERTY_HINT_RANGE, "1,100,1"), 8));
 	options_general.push_back(ResourceImporter::ImportOption(PropertyInfo(Variant::INT, "msdf_size", PROPERTY_HINT_RANGE, "1,250,1"), 48));

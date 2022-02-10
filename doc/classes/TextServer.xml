@@ -96,6 +96,13 @@
 				[b]Note:[/b] Glyph index is specific to the font, use glyphs indices returned by [method shaped_text_get_glyphs] or [method font_get_glyph_index].
 			</description>
 		</method>
+		<method name="font_get_antialiasing" qualifiers="const">
+			<return type="int" enum="TextServer.FontAntialiasing" />
+			<argument index="0" name="font_rid" type="RID" />
+			<description>
+				Returns font antialiasing mode.
+			</description>
+		</method>
 		<method name="font_get_ascent" qualifiers="const">
 			<return type="float" />
 			<argument index="0" name="font_rid" type="RID" />
@@ -392,13 +399,6 @@
 				Returns [code]true[/code] if a Unicode [code]char[/code] is available in the font.
 			</description>
 		</method>
-		<method name="font_is_antialiased" qualifiers="const">
-			<return type="bool" />
-			<argument index="0" name="font_rid" type="RID" />
-			<description>
-				Returns [code]true[/code] if font 8-bit anitialiased glyph rendering is supported and enabled.
-			</description>
-		</method>
 		<method name="font_is_force_autohinter" qualifiers="const">
 			<return type="bool" />
 			<argument index="0" name="font_rid" type="RID" />
@@ -501,12 +501,12 @@
 				Renders the range of characters to the font cache texture.
 			</description>
 		</method>
-		<method name="font_set_antialiased">
+		<method name="font_set_antialiasing">
 			<return type="void" />
 			<argument index="0" name="font_rid" type="RID" />
-			<argument index="1" name="antialiased" type="bool" />
+			<argument index="1" name="antialiasing" type="int" enum="TextServer.FontAntialiasing" />
 			<description>
-				If set to [code]true[/code], 8-bit antialiased glyph rendering is used, otherwise 1-bit rendering is used. Used by dynamic fonts only.
+				Set font antialiasing mode.
 			</description>
 		</method>
 		<method name="font_set_ascent">
@@ -1549,6 +1549,24 @@
 		</constant>
 		<constant name="FONT_FIXED_WIDTH" value="4" enum="FontStyle">
 			Font have fixed-width characters.
+		</constant>
+		<constant name="FONT_ANTIALIASING_NONE" value="0" enum="FontAntialiasing">
+			Font glyphs are rasterized as 1-bit bitmaps.
+		</constant>
+		<constant name="FONT_ANTIALIASING_GRAY" value="1" enum="FontAntialiasing">
+			Font glyphs are rasterized as 8-bit grayscale anti-aliased bitmaps..
+		</constant>
+		<constant name="FONT_ANTIALIASING_LCD_RGB" value="2" enum="FontAntialiasing">
+			Font glyphs are rasterized for LCD screens, with horizontal RGB sub-pixel order.
+		</constant>
+		<constant name="FONT_ANTIALIASING_LCD_BGR" value="3" enum="FontAntialiasing">
+			Font glyphs are rasterized for LCD screens, with horizontal BGR sub-pixel order.
+		</constant>
+		<constant name="FONT_ANTIALIASING_LCD_V_RGB" value="4" enum="FontAntialiasing">
+			Font glyphs are rasterized for LCD screens, with vertical RGB sub-pixel order.
+		</constant>
+		<constant name="FONT_ANTIALIASING_LCD_V_BGR" value="5" enum="FontAntialiasing">
+			Font glyphs are rasterized for LCD screens, with vertical BGR sub-pixel order.
 		</constant>
 	</constants>
 </class>
