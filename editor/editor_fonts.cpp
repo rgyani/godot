@@ -52,6 +52,21 @@
 	m_name->add_data(FontJapanese);   \
 	m_name->add_data(FontFallback);
 
+#define MAKE_FALLBACKS_SLANTED(m_name)       \
+	m_name->add_data(FontArabicSlanted);     \
+	m_name->add_data(FontBengaliSlanted);    \
+	m_name->add_data(FontDevanagariSlanted); \
+	m_name->add_data(FontGeorgianSlanted);   \
+	m_name->add_data(FontHebrewSlanted);     \
+	m_name->add_data(FontMalayalamSlanted);  \
+	m_name->add_data(FontOriyaSlanted);      \
+	m_name->add_data(FontSinhalaSlanted);    \
+	m_name->add_data(FontTamilSlanted);      \
+	m_name->add_data(FontTeluguSlanted);     \
+	m_name->add_data(FontThaiSlanted);       \
+	m_name->add_data(FontJapanese);          \
+	m_name->add_data(FontFallback);
+
 #define MAKE_FALLBACKS_BOLD(m_name)       \
 	m_name->add_data(FontArabicBold);     \
 	m_name->add_data(FontBengaliBold);    \
@@ -92,6 +107,33 @@
 	m_name->set_spacing(TextServer::SPACING_TOP, -EDSCALE);           \
 	m_name->set_spacing(TextServer::SPACING_BOTTOM, -EDSCALE);        \
 	MAKE_FALLBACKS(m_name);
+
+#define MAKE_SLANTED_FONT(m_name, m_variations)                       \
+	Ref<Font> m_name;                                                 \
+	m_name.instantiate();                                             \
+	m_name.instantiate();                                             \
+	if (CustomFontSlanted.is_valid()) {                               \
+		m_name->add_data(CustomFontSlanted);                          \
+		m_name->add_data(DefaultFontSlanted);                         \
+	} else {                                                          \
+		m_name->add_data(DefaultFontSlanted);                         \
+	}                                                                 \
+	{                                                                 \
+		Dictionary variations;                                        \
+		if (!m_variations.is_empty()) {                               \
+			Vector<String> variation_tags = m_variations.split(",");  \
+			for (int i = 0; i < variation_tags.size(); i++) {         \
+				Vector<String> tokens = variation_tags[i].split("="); \
+				if (tokens.size() == 2) {                             \
+					variations[tokens[0]] = tokens[1].to_float();     \
+				}                                                     \
+			}                                                         \
+		}                                                             \
+		m_name->set_variation_coordinates(variations);                \
+	}                                                                 \
+	m_name->set_spacing(TextServer::SPACING_TOP, -EDSCALE);           \
+	m_name->set_spacing(TextServer::SPACING_BOTTOM, -EDSCALE);        \
+	MAKE_FALLBACKS_SLANTED(m_name);
 
 #define MAKE_BOLD_FONT(m_name, m_variations)                          \
 	Ref<Font> m_name;                                                 \
@@ -216,6 +258,12 @@ void editor_register_fonts(Ref<Theme> p_theme) {
 		EditorSettings::get_singleton()->set_manually("interface/editor/main_font", "");
 	}
 
+	Ref<FontData> CustomFontSlanted;
+	if (CustomFont.is_valid()) {
+		CustomFontSlanted = CustomFont->duplicate();
+		CustomFontSlanted->set_transform(Transform2D(1.0, 0.4, 0.0, 1.0, 0.0, 0.0));
+	}
+
 	/* Custom Bold font */
 
 	String custom_font_path_bold = EditorSettings::get_singleton()->get("interface/editor/main_font_bold");
@@ -263,6 +311,33 @@ void editor_register_fonts(Ref<Theme> p_theme) {
 	Ref<FontData> FontThai = load_cached_internal_font(_font_NotoSansThaiUI_Regular, _font_NotoSansThaiUI_Regular_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
 	Ref<FontData> FontThaiBold = load_cached_internal_font(_font_NotoSansThaiUI_Bold, _font_NotoSansThaiUI_Bold_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
 
+	const Transform2D slanted_transform = Transform2D(1.0, 0.3, 0.0, 1.0, 0.0, 0.0);
+
+	Ref<FontData> DefaultFontSlanted = DefaultFont->duplicate();
+	DefaultFontSlanted->set_transform(slanted_transform);
+	Ref<FontData> FontArabicSlanted = FontArabic->duplicate();
+	FontArabicSlanted->set_transform(slanted_transform);
+	Ref<FontData> FontBengaliSlanted = FontBengali->duplicate();
+	FontBengaliSlanted->set_transform(slanted_transform);
+	Ref<FontData> FontDevanagariSlanted = FontDevanagari->duplicate();
+	FontDevanagariSlanted->set_transform(slanted_transform);
+	Ref<FontData> FontGeorgianSlanted = FontGeorgian->duplicate();
+	FontGeorgianSlanted->set_transform(slanted_transform);
+	Ref<FontData> FontHebrewSlanted = FontHebrew->duplicate();
+	FontHebrewSlanted->set_transform(slanted_transform);
+	Ref<FontData> FontMalayalamSlanted = FontMalayalam->duplicate();
+	FontMalayalamSlanted->set_transform(slanted_transform);
+	Ref<FontData> FontOriyaSlanted = FontOriya->duplicate();
+	FontOriyaSlanted->set_transform(slanted_transform);
+	Ref<FontData> FontSinhalaSlanted = FontSinhala->duplicate();
+	FontSinhalaSlanted->set_transform(slanted_transform);
+	Ref<FontData> FontTamilSlanted = FontTamil->duplicate();
+	FontTamilSlanted->set_transform(slanted_transform);
+	Ref<FontData> FontTeluguSlanted = FontTelugu->duplicate();
+	FontTeluguSlanted->set_transform(slanted_transform);
+	Ref<FontData> FontThaiSlanted = FontThai->duplicate();
+	FontThaiSlanted->set_transform(slanted_transform);
+
 	/* Droid Sans */
 
 	Ref<FontData> FontFallback = load_cached_internal_font(_font_DroidSansFallback, _font_DroidSansFallback_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
@@ -285,6 +360,7 @@ void editor_register_fonts(Ref<Theme> p_theme) {
 
 	// Bold font
 	MAKE_BOLD_FONT(df_bold, String());
+	MAKE_SLANTED_FONT(df_italic, String());
 	p_theme->set_font_size("bold_size", "EditorFonts", default_font_size);
 	p_theme->set_font("bold", "EditorFonts", df_bold);
 
@@ -314,8 +390,8 @@ void editor_register_fonts(Ref<Theme> p_theme) {
 	MAKE_SOURCE_FONT(df_code, code_font_custom_variations);
 	p_theme->set_font_size("doc_size", "EditorFonts", int(EDITOR_GET("text_editor/help/help_font_size")) * EDSCALE);
 	p_theme->set_font("doc", "EditorFonts", df);
-	p_theme->set_font_size("doc_bold_size", "EditorFonts", int(EDITOR_GET("text_editor/help/help_font_size")) * EDSCALE);
 	p_theme->set_font("doc_bold", "EditorFonts", df_bold);
+	p_theme->set_font("doc_italic", "EditorFonts", df_italic);
 	p_theme->set_font_size("doc_title_size", "EditorFonts", int(EDITOR_GET("text_editor/help/help_title_font_size")) * EDSCALE);
 	p_theme->set_font("doc_title", "EditorFonts", df_bold);
 	p_theme->set_font_size("doc_source_size", "EditorFonts", int(EDITOR_GET("text_editor/help/help_source_font_size")) * EDSCALE);
