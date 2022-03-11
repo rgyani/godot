@@ -64,8 +64,8 @@
 	m_name->add_data(FontTamilSlanted);      \
 	m_name->add_data(FontTeluguSlanted);     \
 	m_name->add_data(FontThaiSlanted);       \
-	m_name->add_data(FontJapanese);          \
-	m_name->add_data(FontFallback);
+	m_name->add_data(FontJapaneseBold);      \
+	m_name->add_data(FontFallbackBold);
 
 #define MAKE_FALLBACKS_BOLD(m_name)       \
 	m_name->add_data(FontArabicBold);     \
@@ -79,8 +79,8 @@
 	m_name->add_data(FontTamilBold);      \
 	m_name->add_data(FontTeluguBold);     \
 	m_name->add_data(FontThaiBold);       \
-	m_name->add_data(FontJapanese);       \
-	m_name->add_data(FontFallback);
+	m_name->add_data(FontJapaneseBold);   \
+	m_name->add_data(FontFallbackBold);
 
 #define MAKE_DEFAULT_FONT(m_name, m_variations)                       \
 	Ref<Font> m_name;                                                 \
@@ -287,31 +287,20 @@ void editor_register_fonts(Ref<Theme> p_theme) {
 	/* Noto Sans */
 
 	Ref<FontData> DefaultFont = load_cached_internal_font(_font_NotoSans_Regular, _font_NotoSans_Regular_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
-	Ref<FontData> DefaultFontBold = load_cached_internal_font(_font_NotoSans_Bold, _font_NotoSans_Bold_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
 	Ref<FontData> FontArabic = load_cached_internal_font(_font_NotoNaskhArabicUI_Regular, _font_NotoNaskhArabicUI_Regular_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
-	Ref<FontData> FontArabicBold = load_cached_internal_font(_font_NotoNaskhArabicUI_Bold, _font_NotoNaskhArabicUI_Bold_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
 	Ref<FontData> FontBengali = load_cached_internal_font(_font_NotoSansBengaliUI_Regular, _font_NotoSansBengaliUI_Regular_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
-	Ref<FontData> FontBengaliBold = load_cached_internal_font(_font_NotoSansBengaliUI_Bold, _font_NotoSansBengaliUI_Bold_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
 	Ref<FontData> FontDevanagari = load_cached_internal_font(_font_NotoSansDevanagariUI_Regular, _font_NotoSansDevanagariUI_Regular_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
-	Ref<FontData> FontDevanagariBold = load_cached_internal_font(_font_NotoSansDevanagariUI_Bold, _font_NotoSansDevanagariUI_Bold_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
 	Ref<FontData> FontGeorgian = load_cached_internal_font(_font_NotoSansGeorgian_Regular, _font_NotoSansGeorgian_Regular_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
-	Ref<FontData> FontGeorgianBold = load_cached_internal_font(_font_NotoSansGeorgian_Bold, _font_NotoSansGeorgian_Bold_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
 	Ref<FontData> FontHebrew = load_cached_internal_font(_font_NotoSansHebrew_Regular, _font_NotoSansHebrew_Regular_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
-	Ref<FontData> FontHebrewBold = load_cached_internal_font(_font_NotoSansHebrew_Bold, _font_NotoSansHebrew_Bold_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
 	Ref<FontData> FontMalayalam = load_cached_internal_font(_font_NotoSansMalayalamUI_Regular, _font_NotoSansMalayalamUI_Regular_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
-	Ref<FontData> FontMalayalamBold = load_cached_internal_font(_font_NotoSansMalayalamUI_Bold, _font_NotoSansMalayalamUI_Bold_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
 	Ref<FontData> FontOriya = load_cached_internal_font(_font_NotoSansOriyaUI_Regular, _font_NotoSansOriyaUI_Regular_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
-	Ref<FontData> FontOriyaBold = load_cached_internal_font(_font_NotoSansOriyaUI_Bold, _font_NotoSansOriyaUI_Bold_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
 	Ref<FontData> FontSinhala = load_cached_internal_font(_font_NotoSansSinhalaUI_Regular, _font_NotoSansSinhalaUI_Regular_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
-	Ref<FontData> FontSinhalaBold = load_cached_internal_font(_font_NotoSansSinhalaUI_Bold, _font_NotoSansSinhalaUI_Bold_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
 	Ref<FontData> FontTamil = load_cached_internal_font(_font_NotoSansTamilUI_Regular, _font_NotoSansTamilUI_Regular_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
-	Ref<FontData> FontTamilBold = load_cached_internal_font(_font_NotoSansTamilUI_Bold, _font_NotoSansTamilUI_Bold_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
 	Ref<FontData> FontTelugu = load_cached_internal_font(_font_NotoSansTeluguUI_Regular, _font_NotoSansTeluguUI_Regular_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
-	Ref<FontData> FontTeluguBold = load_cached_internal_font(_font_NotoSansTeluguUI_Bold, _font_NotoSansTeluguUI_Bold_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
 	Ref<FontData> FontThai = load_cached_internal_font(_font_NotoSansThaiUI_Regular, _font_NotoSansThaiUI_Regular_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
-	Ref<FontData> FontThaiBold = load_cached_internal_font(_font_NotoSansThaiUI_Bold, _font_NotoSansThaiUI_Bold_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
 
 	const Transform2D slanted_transform = Transform2D(1.0, 0.3, 0.0, 1.0, 0.0, 0.0);
+	const float embolden_strength = 0.8;
 
 	Ref<FontData> DefaultFontSlanted = DefaultFont->duplicate();
 	DefaultFontSlanted->set_transform(slanted_transform);
@@ -338,10 +327,40 @@ void editor_register_fonts(Ref<Theme> p_theme) {
 	Ref<FontData> FontThaiSlanted = FontThai->duplicate();
 	FontThaiSlanted->set_transform(slanted_transform);
 
+	Ref<FontData> DefaultFontBold = DefaultFont->duplicate();
+	DefaultFontBold->set_embolden(embolden_strength);
+	Ref<FontData> FontArabicBold = FontArabic->duplicate();
+	FontArabicBold->set_embolden(embolden_strength);
+	Ref<FontData> FontBengaliBold = FontBengali->duplicate();
+	FontBengaliBold->set_embolden(embolden_strength);
+	Ref<FontData> FontDevanagariBold = FontDevanagari->duplicate();
+	FontDevanagariBold->set_embolden(embolden_strength);
+	Ref<FontData> FontGeorgianBold = FontGeorgian->duplicate();
+	FontGeorgianBold->set_embolden(embolden_strength);
+	Ref<FontData> FontHebrewBold = FontHebrew->duplicate();
+	FontHebrewBold->set_embolden(embolden_strength);
+	Ref<FontData> FontMalayalamBold = FontMalayalam->duplicate();
+	FontMalayalamBold->set_embolden(embolden_strength);
+	Ref<FontData> FontOriyaBold = FontOriya->duplicate();
+	FontOriyaBold->set_embolden(embolden_strength);
+	Ref<FontData> FontSinhalaBold = FontSinhala->duplicate();
+	FontSinhalaBold->set_embolden(embolden_strength);
+	Ref<FontData> FontTamilBold = FontTamil->duplicate();
+	FontTamilBold->set_embolden(embolden_strength);
+	Ref<FontData> FontTeluguBold = FontTelugu->duplicate();
+	FontTeluguBold->set_embolden(embolden_strength);
+	Ref<FontData> FontThaiBold = FontThai->duplicate();
+	FontThaiBold->set_embolden(embolden_strength);
+
 	/* Droid Sans */
 
 	Ref<FontData> FontFallback = load_cached_internal_font(_font_DroidSansFallback, _font_DroidSansFallback_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
 	Ref<FontData> FontJapanese = load_cached_internal_font(_font_DroidSansJapanese, _font_DroidSansJapanese_size, font_hinting, font_antialiased, true, font_subpixel_positioning);
+
+	Ref<FontData> FontFallbackBold = FontFallback->duplicate();
+	FontFallbackBold->set_embolden(embolden_strength);
+	Ref<FontData> FontJapaneseBold = FontJapanese->duplicate();
+	FontJapaneseBold->set_embolden(embolden_strength);
 
 	/* Hack */
 
