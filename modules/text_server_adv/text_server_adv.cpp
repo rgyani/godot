@@ -67,6 +67,7 @@ using namespace core_bind;
 #include "core/contour-combiners.h"
 #include "core/edge-selectors.h"
 #include "msdfgen.h"
+#include "thirdparty/misc/clipper.hpp"
 #endif
 
 /*************************************************************************/
@@ -903,43 +904,6 @@ struct MSDFThreadData {
 	DistancePixelConversion *distancePixelConversion;
 };
 
-static msdfgen::Point2 ft_point2(const FT_Vector &vector) {
-	return msdfgen::Point2(vector.x / 60.0f, vector.y / 60.0f);
-}
-
-static int ft_move_to(const FT_Vector *to, void *user) {
-	MSContext *context = static_cast<MSContext *>(user);
-	if (!(context->contour && context->contour->edges.empty())) {
-		context->contour = &context->shape->addContour();
-	}
-	context->position = ft_point2(*to);
-	return 0;
-}
-
-static int ft_line_to(const FT_Vector *to, void *user) {
-	MSContext *context = static_cast<MSContext *>(user);
-	msdfgen::Point2 endpoint = ft_point2(*to);
-	if (endpoint != context->position) {
-		context->contour->addEdge(new msdfgen::LinearSegment(context->position, endpoint));
-		context->position = endpoint;
-	}
-	return 0;
-}
-
-static int ft_conic_to(const FT_Vector *control, const FT_Vector *to, void *user) {
-	MSContext *context = static_cast<MSContext *>(user);
-	context->contour->addEdge(new msdfgen::QuadraticSegment(context->position, ft_point2(*control), ft_point2(*to)));
-	context->position = ft_point2(*to);
-	return 0;
-}
-
-static int ft_cubic_to(const FT_Vector *control1, const FT_Vector *control2, const FT_Vector *to, void *user) {
-	MSContext *context = static_cast<MSContext *>(user);
-	context->contour->addEdge(new msdfgen::CubicSegment(context->position, ft_point2(*control1), ft_point2(*control2), ft_point2(*to)));
-	context->position = ft_point2(*to);
-	return 0;
-}
-
 void TextServerAdvanced::_generateMTSDF_threaded(uint32_t y, void *p_td) const {
 	MSDFThreadData *td = static_cast<MSDFThreadData *>(p_td);
 
@@ -954,6 +918,8 @@ void TextServerAdvanced::_generateMTSDF_threaded(uint32_t y, void *p_td) const {
 }
 
 _FORCE_INLINE_ TextServerAdvanced::FontGlyph TextServerAdvanced::rasterize_msdf(FontDataAdvanced *p_font_data, FontDataForSizeAdvanced *p_data, int p_pixel_range, int p_rect_margin, FT_Outline *outline, const Vector2 &advance) const {
+	using namespace ClipperLib;
+
 	msdfgen::Shape shape;
 
 	shape.contours.clear();
@@ -961,18 +927,119 @@ _FORCE_INLINE_ TextServerAdvanced::FontGlyph TextServerAdvanced::rasterize_msdf(
 
 	MSContext context = {};
 	context.shape = &shape;
-	FT_Outline_Funcs ft_functions;
-	ft_functions.move_to = &ft_move_to;
-	ft_functions.line_to = &ft_line_to;
-	ft_functions.conic_to = &ft_conic_to;
-	ft_functions.cubic_to = &ft_cubic_to;
-	ft_functions.shift = 0;
-	ft_functions.delta = 0;
 
-	int error = FT_Outline_Decompose(outline, &ft_functions, &context);
-	ERR_FAIL_COND_V_MSG(error, FontGlyph(), "FreeType: Outline decomposition error: '" + String(FT_Error_String(error)) + "'.");
-	if (!shape.contours.empty() && shape.contours.back().edges.empty()) {
-		shape.contours.pop_back();
+	//static constexpr double curve_step = 0.5;
+
+	if (outline->n_points < 3 || outline->n_contours < 1) {
+		return FontGlyph(); // No full contours, only glyph control points (or nothing), ignore.
+	}
+
+	// Approximate Bezier curves as polygons.
+	// See https://freetype.org/freetype2/docs/glyphs/glyphs-6.html, for more info.
+	ClipperLib::Paths in;
+	for (int i = 0; i < outline->n_contours; i++) {
+		int32_t start = (i == 0) ? 0 : (outline->contours[i - 1] + 1);
+		int32_t end = outline->contours[i];
+		ClipperLib::Path inp;
+
+		for (int32_t j = start; j <= end; j++) {
+			if (FT_CURVE_TAG(outline->tags[j]) == TextServer::CONTOUR_CURVE_TAG_ON) {
+				// Point on the curve.
+				inp.push_back(ClipperLib::IntPoint(outline->points[j].x, outline->points[j].y));
+			} else if (FT_CURVE_TAG(outline->tags[j]) == TextServer::CONTOUR_CURVE_TAG_OFF_CONIC) {
+				// Conic Bezier arc.
+				int32_t next = (j == end) ? start : (j + 1);
+				int32_t prev = (j == start) ? end : (j - 1);
+				Vector2 p0;
+				Vector2 p1 = Vector2(outline->points[j].x, outline->points[j].y);
+				Vector2 p2;
+
+				// For successive conic OFF points add a virtual ON point in the middle.
+				if (FT_CURVE_TAG(outline->tags[prev]) == TextServer::CONTOUR_CURVE_TAG_OFF_CONIC) {
+					p0 = (Vector2(outline->points[prev].x, outline->points[prev].y) + Vector2(outline->points[j].x, outline->points[j].y)) / 2.0;
+				} else if (FT_CURVE_TAG(outline->tags[prev]) == TextServer::CONTOUR_CURVE_TAG_ON) {
+					p0 = Vector2(outline->points[prev].x, outline->points[prev].y);
+				} else {
+					ERR_FAIL_V_MSG(FontGlyph(), vformat("Invalid conic arc point sequence at %d:%d", i, j));
+				}
+				if (FT_CURVE_TAG(outline->tags[next]) == TextServer::CONTOUR_CURVE_TAG_OFF_CONIC) {
+					p2 = (Vector2(outline->points[j].x, outline->points[j].y) + Vector2(outline->points[next].x, outline->points[next].y)) / 2.0;
+				} else if (FT_CURVE_TAG(outline->tags[next]) == TextServer::CONTOUR_CURVE_TAG_ON) {
+					p2 = Vector2(outline->points[next].x, outline->points[next].y);
+				} else {
+					ERR_FAIL_V_MSG(FontGlyph(), vformat("Invalid conic arc point sequence at %d:%d", i, j));
+				}
+
+				real_t step = 0.2; //CLAMP(curve_step / (p0 - p2).length(), 0.01, 0.5);
+				real_t t = step;
+				while (t < 1.0) {
+					real_t omt = (1.0 - t);
+					real_t omt2 = omt * omt;
+					real_t t2 = t * t;
+
+					Vector2 point = p1 + omt2 * (p0 - p1) + t2 * (p2 - p1);
+					inp.push_back(ClipperLib::IntPoint(point.x, point.y));
+					t += step;
+				}
+			} else if (FT_CURVE_TAG(outline->tags[j]) == TextServer::CONTOUR_CURVE_TAG_OFF_CUBIC) {
+				// Cubic Bezier arc.
+				int32_t next1 = (j == end) ? start : (j + 1);
+				int32_t next2 = (next1 == end) ? start : (next1 + 1);
+				int32_t prev = (j == start) ? end : (j - 1);
+
+				// There must be exactly two OFF points and two ON points for each cubic arc.
+				ERR_FAIL_COND_V_MSG(FT_CURVE_TAG(outline->tags[prev]) != TextServer::CONTOUR_CURVE_TAG_ON, FontGlyph(), vformat("Invalid cubic arc point sequence at %d:%d", i, prev));
+				ERR_FAIL_COND_V_MSG(FT_CURVE_TAG(outline->tags[next1]) != TextServer::CONTOUR_CURVE_TAG_OFF_CUBIC, FontGlyph(), vformat("Invalid cubic arc point sequence at %d:%d", i, next1));
+				ERR_FAIL_COND_V_MSG(FT_CURVE_TAG(outline->tags[next2]) != TextServer::CONTOUR_CURVE_TAG_ON, FontGlyph(), vformat("Invalid cubic arc point sequence at %d:%d", i, next2));
+
+				Vector2 p0 = Vector2(outline->points[prev].x, outline->points[prev].y);
+				Vector2 p1 = Vector2(outline->points[j].x, outline->points[j].y);
+				Vector2 p2 = Vector2(outline->points[next1].x, outline->points[next1].y);
+				Vector2 p3 = Vector2(outline->points[next2].x, outline->points[next2].y);
+
+				real_t step = 0.2; //CLAMP(curve_step / (p0 - p3).length(), 0.01, 0.5);
+				real_t t = step;
+				while (t < 1.0) {
+					real_t omt = (1.0 - t);
+					real_t omt2 = omt * omt;
+					real_t omt3 = omt2 * omt;
+					real_t t2 = t * t;
+					real_t t3 = t2 * t;
+
+					Vector2 point = p0 * omt3 + p1 * omt2 * t * 3.0 + p2 * omt * t2 * 3.0 + p3 * t3;
+					inp.push_back(ClipperLib::IntPoint(point.x, point.y));
+					t += step;
+				}
+				i++;
+			} else {
+				ERR_FAIL_V_MSG(FontGlyph(), vformat("Unknown point tag at %d:%d", i, j));
+			}
+		}
+
+		if (inp.size() < 3) {
+			continue; // Skip glyph control points.
+		}
+
+		//if (FT_Outline_Get_Orientation(outline) != FT_ORIENTATION_FILL_RIGHT) {
+		//	std::reverse(inp.begin(), inp.end());
+		//}
+
+		in.push_back(inp);
+	}
+
+	ClipperLib::Paths out;
+	ClipperLib::SimplifyPolygons(in, out);
+
+	for (const ClipperLib::Path &E : in) {
+		context.contour = &context.shape->addContour();
+
+		for (int i = 0; i < E.size(); i++) {
+			msdfgen::Point2 point = msdfgen::Point2(double(E[i].X) / 60.0, double(E[i].Y) / 60.0);
+			if (i > 0) {
+				context.contour->addEdge(new msdfgen::LinearSegment(context.position, point));
+			}
+			context.position = point;
+		}
 	}
 
 	if (FT_Outline_Get_Orientation(outline) == 1) {
