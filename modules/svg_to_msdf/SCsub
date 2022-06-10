@@ -1,0 +1,16 @@
+#!/usr/bin/env python
+
+Import("env")
+Import("env_modules")
+
+env_svg2msdf = env_modules.Clone()
+
+
+env_svg2msdf.Append(CPPPATH=["#thirdparty/thorvg/inc"])
+env_svg2msdf.Append(CPPPATH=["#thirdparty/thorvg/src/lib"])
+
+if env["builtin_msdfgen"]:
+    env_svg2msdf.Append(CPPPATH=["#thirdparty/msdfgen"])
+
+# Godot source files
+env_svg2msdf.add_source_files(env.modules_sources, "*.cpp")
