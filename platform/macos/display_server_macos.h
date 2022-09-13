@@ -107,6 +107,7 @@ public:
 		bool layered_window = false;
 		bool fullscreen = false;
 		bool on_top = false;
+		bool wallpaper = false;
 		bool borderless = false;
 		bool resize_disabled = false;
 		bool no_focus = false;

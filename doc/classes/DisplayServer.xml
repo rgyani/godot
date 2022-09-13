@@ -1668,7 +1668,11 @@
 			Use [method window_get_safe_title_margins] to determine area under the title bar that is not covered by decorations.
 			[b]Note:[/b] This flag is implemented on macOS.
 		</constant>
-		<constant name="WINDOW_FLAG_MAX" value="7" enum="WindowFlags">
+		<constant name="WINDOW_FLAG_WALLPAPER" value="7" enum="WindowFlags">
+			Window content is drawn as a desktop wallpaper.
+			[b]Note:[/b] This flag is implemented on macOS and Windows.
+		</constant>
+		<constant name="WINDOW_FLAG_MAX" value="8" enum="WindowFlags">
 			Max value of the [enum WindowFlags].
 		</constant>
 		<constant name="WINDOW_EVENT_MOUSE_ENTER" value="0" enum="WindowEvent">

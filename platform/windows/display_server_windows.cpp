@@ -641,6 +641,11 @@ DisplayServer::WindowID DisplayServerWindows::create_sub_window(WindowMode p_mod
 	}
 	if (p_flags & WINDOW_FLAG_ALWAYS_ON_TOP_BIT && p_mode != WINDOW_MODE_FULLSCREEN && p_mode != WINDOW_MODE_EXCLUSIVE_FULLSCREEN) {
 		wd.always_on_top = true;
+		wd.wallpaper = false;
+	}
+	if (p_flags & WINDOW_FLAG_WALLPAPER_BIT && p_mode != WINDOW_MODE_FULLSCREEN && p_mode != WINDOW_MODE_EXCLUSIVE_FULLSCREEN) {
+		wd.always_on_top = false;
+		wd.wallpaper = true;
 	}
 	if (p_flags & WINDOW_FLAG_NO_FOCUS_BIT) {
 		wd.no_focus = true;
@@ -974,6 +979,7 @@ void DisplayServerWindows::window_set_transient(WindowID p_window, WindowID p_pa
 
 	ERR_FAIL_COND(wd_window.transient_parent == p_parent);
 	ERR_FAIL_COND_MSG(wd_window.always_on_top, "Windows with the 'on top' can't become transient.");
+	ERR_FAIL_COND_MSG(wd_window.wallpaper, "Windows with the 'wallpaper' can't become transient.");
 
 	if (p_parent == INVALID_WINDOW_ID) {
 		// Remove transient.
@@ -1173,10 +1179,25 @@ void DisplayServerWindows::_update_window_style(WindowID p_window, bool p_repain
 	ERR_FAIL_COND(!windows.has(p_window));
 	WindowData &wd = windows[p_window];
 
+	if (wd.wallpaper) {
+		SetParent(wd.hWnd, get_wp_host_hwnd());
+	} else if (wd.transient_parent != INVALID_WINDOW_ID && wd.exclusive) {
+		WindowData &wd_parent = windows[wd.transient_parent];
+		SetParent(wd.hWnd, nullptr);
+		SetWindowLongPtr(wd.hWnd, GWLP_HWNDPARENT, (LONG_PTR)wd_parent.hWnd);
+	} else {
+		SetParent(wd.hWnd, nullptr);
+		SetWindowLongPtr(wd.hWnd, GWLP_HWNDPARENT, (LONG_PTR) nullptr);
+	}
+
 	DWORD style = 0;
 	DWORD style_ex = 0;
 
 	_get_window_style(p_window == MAIN_WINDOW_ID, wd.fullscreen, wd.multiwindow_fs, wd.borderless, wd.resizable, wd.maximized, wd.no_focus || wd.is_popup, style, style_ex);
+	if (wd.wallpaper) {
+		style |= WS_CHILDWINDOW;
+		style_ex |= WS_EX_NOACTIVATE;
+	}
 
 	SetWindowLongPtr(wd.hWnd, GWL_STYLE, style);
 	SetWindowLongPtr(wd.hWnd, GWL_EXSTYLE, style_ex);
@@ -1322,6 +1343,37 @@ bool DisplayServerWindows::window_is_maximize_allowed(WindowID p_window) const {
 	return true;
 }
 
+HWND DisplayServerWindows::get_wp_host_hwnd() {
+	HWND progman = FindWindow("Progman", nullptr);
+	SendMessageA(progman, 0x052C, 0x0D, 0x00);
+	SendMessageA(progman, 0x052C, 0x0D, 0x01);
+
+	HWND iconview = 0;
+	EnumWindows(find_iconview, (LPARAM)(&iconview));
+	if (!iconview) {
+		SendMessageA(progman, 0x052C, 0x00, 0x00);
+		EnumWindows(find_iconview, (LPARAM)(&iconview));
+	}
+
+	return GetWindow(iconview, GW_HWNDNEXT);
+}
+
+BOOL CALLBACK DisplayServerWindows::find_iconview(HWND p_hwnd, LPARAM p_lparam) {
+	HWND *iconview = (HWND *)(p_lparam);
+	char classname[255];
+	GetClassName(p_hwnd, (LPSTR)&classname[0], 255);
+
+	if (strcmp(&classname[0], "WorkerW") == 0) {
+		HWND child = FindWindowEx(p_hwnd, nullptr, "SHELLDLL_DefView", nullptr);
+		if (child != nullptr) {
+			*iconview = p_hwnd;
+			return false;
+		}
+	}
+
+	return true;
+}
+
 void DisplayServerWindows::window_set_flag(WindowFlags p_flag, bool p_enabled, WindowID p_window) {
 	_THREAD_SAFE_METHOD_
 
@@ -1338,9 +1390,20 @@ void DisplayServerWindows::window_set_flag(WindowFlags p_flag, bool p_enabled, W
 			_update_window_mouse_passthrough(p_window);
 			ShowWindow(wd.hWnd, (wd.no_focus || wd.is_popup) ? SW_SHOWNOACTIVATE : SW_SHOW); // Show the window.
 		} break;
+		case WINDOW_FLAG_WALLPAPER: {
+			ERR_FAIL_COND_MSG(wd.transient_parent != INVALID_WINDOW_ID && p_enabled, "Transient windows can't become wallpaper");
+			wd.wallpaper = p_enabled;
+			if (p_enabled) {
+				wd.always_on_top = false;
+			}
+			_update_window_style(p_window);
+		} break;
 		case WINDOW_FLAG_ALWAYS_ON_TOP: {
 			ERR_FAIL_COND_MSG(wd.transient_parent != INVALID_WINDOW_ID && p_enabled, "Transient windows can't become on top");
 			wd.always_on_top = p_enabled;
+			if (p_enabled) {
+				wd.wallpaper = false;
+			}
 			_update_window_style(p_window);
 		} break;
 		case WINDOW_FLAG_TRANSPARENT: {
@@ -1397,6 +1460,9 @@ bool DisplayServerWindows::window_get_flag(WindowFlags p_flag, WindowID p_window
 		} break;
 		case WINDOW_FLAG_ALWAYS_ON_TOP: {
 			return wd.always_on_top;
+		} break;
+		case WINDOW_FLAG_WALLPAPER: {
+			return wd.wallpaper;
 		} break;
 		case WINDOW_FLAG_TRANSPARENT: {
 			return wd.layered_window;

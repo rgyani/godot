@@ -297,6 +297,7 @@ public:
 		WINDOW_FLAG_NO_FOCUS,
 		WINDOW_FLAG_POPUP,
 		WINDOW_FLAG_EXTEND_TO_TITLE,
+		WINDOW_FLAG_WALLPAPER,
 		WINDOW_FLAG_MAX,
 	};
 
@@ -309,6 +310,7 @@ public:
 		WINDOW_FLAG_NO_FOCUS_BIT = (1 << WINDOW_FLAG_NO_FOCUS),
 		WINDOW_FLAG_POPUP_BIT = (1 << WINDOW_FLAG_POPUP),
 		WINDOW_FLAG_EXTEND_TO_TITLE_BIT = (1 << WINDOW_FLAG_EXTEND_TO_TITLE),
+		WINDOW_FLAG_WALLPAPER_BIT = (1 << WINDOW_FLAG_WALLPAPER),
 	};
 
 	virtual WindowID create_sub_window(WindowMode p_mode, VSyncMode p_vsync_mode, uint32_t p_flags, const Rect2i &p_rect = Rect2i());

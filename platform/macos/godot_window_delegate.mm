@@ -170,6 +170,8 @@
 	// Restore on-top state.
 	if (wd.on_top) {
 		[wd.window_object setLevel:NSFloatingWindowLevel];
+	} else if (wd.wallpaper) {
+		[wd.window_object setLevel:kCGDesktopWindowLevel];
 	}
 
 	// Force window resize event.

@@ -368,6 +368,7 @@ class DisplayServerWindows : public DisplayServer {
 		bool window_focused = false;
 		bool was_maximized = false;
 		bool always_on_top = false;
+		bool wallpaper = false;
 		bool no_focus = false;
 		bool window_has_focus = false;
 		bool exclusive = false;
@@ -478,6 +479,9 @@ class DisplayServerWindows : public DisplayServer {
 	void _dispatch_input_event(const Ref<InputEvent> &p_event);
 
 	LRESULT _handle_early_window_message(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+	HWND get_wp_host_hwnd();
+	static BOOL CALLBACK find_iconview(HWND p_hwnd, LPARAM p_lparam);
 
 public:
 	LRESULT WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
