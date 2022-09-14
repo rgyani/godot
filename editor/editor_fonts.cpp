@@ -108,27 +108,33 @@ void editor_register_fonts(Ref<Theme> p_theme) {
 	int font_hinting_setting = (int)EditorSettings::get_singleton()->get("interface/editor/font_hinting");
 
 	DynamicFontData::Hinting font_hinting;
+	DynamicFontData::Hinting font_mono_hinting;
 	switch (font_hinting_setting) {
-		case 0:
+		case 0: {
 			// The "Auto" setting uses the setting that best matches the OS' font rendering:
 			// - macOS doesn't use font hinting.
 			// - Windows uses ClearType, which is in between "Light" and "Normal" hinting.
 			// - Linux has configurable font hinting, but most distributions including Ubuntu default to "Light".
 #ifdef OSX_ENABLED
 			font_hinting = DynamicFontData::HINTING_NONE;
+			font_mono_hinting = DynamicFontData::HINTING_NONE;
 #else
 			font_hinting = DynamicFontData::HINTING_LIGHT;
+			font_mono_hinting = DynamicFontData::HINTING_LIGHT;
 #endif
-			break;
-		case 1:
+		} break;
+		case 1: {
 			font_hinting = DynamicFontData::HINTING_NONE;
-			break;
-		case 2:
+			font_mono_hinting = DynamicFontData::HINTING_NONE;
+		} break;
+		case 2: {
 			font_hinting = DynamicFontData::HINTING_LIGHT;
-			break;
-		default:
+			font_mono_hinting = DynamicFontData::HINTING_LIGHT;
+		} break;
+		default: {
 			font_hinting = DynamicFontData::HINTING_NORMAL;
-			break;
+			font_mono_hinting = DynamicFontData::HINTING_LIGHT;
+		} break;
 	}
 
 	String custom_font_path = EditorSettings::get_singleton()->get("interface/editor/main_font");
@@ -164,7 +170,7 @@ void editor_register_fonts(Ref<Theme> p_theme) {
 	if (custom_font_path_source.length() > 0 && dir->file_exists(custom_font_path_source)) {
 		CustomFontSource.instance();
 		CustomFontSource->set_antialiased(font_antialiased);
-		CustomFontSource->set_hinting(font_hinting);
+		CustomFontSource->set_hinting(font_mono_hinting);
 		CustomFontSource->set_font_path(custom_font_path_source);
 	} else {
 		EditorSettings::get_singleton()->set_manually("interface/editor/code_font", "");
@@ -235,7 +241,7 @@ void editor_register_fonts(Ref<Theme> p_theme) {
 	Ref<DynamicFontData> dfmono;
 	dfmono.instance();
 	dfmono->set_antialiased(font_antialiased);
-	dfmono->set_hinting(font_hinting);
+	dfmono->set_hinting(font_mono_hinting);
 	dfmono->set_font_ptr(_font_Hack_Regular, _font_Hack_Regular_size);
 
 	int default_font_size = int(EDITOR_GET("interface/editor/main_font_size")) * EDSCALE;
