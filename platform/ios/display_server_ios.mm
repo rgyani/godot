@@ -484,6 +484,10 @@ void DisplayServerIOS::window_set_title(const String &p_title, WindowID p_window
 	// Probably not supported for iOS
 }
 
+String DisplayServerIOS::window_get_title(WindowID p_window) const {
+	return String();
+}
+
 int DisplayServerIOS::window_get_current_screen(WindowID p_window) const {
 	return SCREEN_OF_MAIN_WINDOW;
 }
@@ -502,6 +506,10 @@ Point2i DisplayServerIOS::window_get_position_with_decorations(WindowID p_window
 
 void DisplayServerIOS::window_set_position(const Point2i &p_position, WindowID p_window) {
 	// Probably not supported for single window iOS app
+}
+
+DisplayServer::WindowID DisplayServerIOS::window_get_transient(WindowID p_window) const {
+	return INVALID_WINDOW_ID;
 }
 
 void DisplayServerIOS::window_set_transient(WindowID p_window, WindowID p_parent) {

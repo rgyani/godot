@@ -1382,6 +1382,21 @@ void DisplayServerX11::window_set_title(const String &p_title, WindowID p_window
 	}
 }
 
+String DisplayServerX11::window_get_title(WindowID p_window) const {
+	_THREAD_SAFE_METHOD_
+
+	ERR_FAIL_COND_V(!windows.has(p_window), String());
+	const WindowData &wd = windows[p_window];
+
+	String title;
+	char *ret = nullptr;
+	if (XFetchName(x11_display, wd.x11_window, &ret) != 0) {
+		title = String::utf8(ret);
+		XFree(ret);
+	}
+	return title;
+}
+
 void DisplayServerX11::window_set_mouse_passthrough(const Vector<Vector2> &p_region, WindowID p_window) {
 	_THREAD_SAFE_METHOD_
 
@@ -1516,6 +1531,14 @@ void DisplayServerX11::window_set_current_screen(int p_screen, WindowID p_window
 			window_set_position(ofs + screen_get_position(p_screen), p_window);
 		}
 	}
+}
+
+DisplayServer::WindowID DisplayServerX11::window_get_transient(WindowID p_window) const {
+	_THREAD_SAFE_METHOD_
+
+	ERR_FAIL_COND_V(!windows.has(p_window), INVALID_WINDOW_ID);
+	const WindowData &wd = windows[p_window];
+	return wd.transient_parent;
 }
 
 void DisplayServerX11::window_set_transient(WindowID p_window, WindowID p_parent) {

@@ -83,6 +83,7 @@ public:
 	void window_set_drop_files_callback(const Callable &p_callable, WindowID p_window = MAIN_WINDOW_ID) override {}
 
 	void window_set_title(const String &p_title, WindowID p_window = MAIN_WINDOW_ID) override {}
+	String window_get_title(WindowID p_window = MAIN_WINDOW_ID) const override { return String(); };
 
 	void window_set_mouse_passthrough(const Vector<Vector2> &p_region, WindowID p_window = MAIN_WINDOW_ID) override {}
 
@@ -93,6 +94,7 @@ public:
 	Point2i window_get_position_with_decorations(WindowID p_window = MAIN_WINDOW_ID) const override { return Point2i(); }
 	void window_set_position(const Point2i &p_position, WindowID p_window = MAIN_WINDOW_ID) override {}
 
+	WindowID window_get_transient(WindowID p_window) const override { return INVALID_WINDOW_ID; }
 	void window_set_transient(WindowID p_window, WindowID p_parent) override {}
 
 	void window_set_max_size(const Size2i p_size, WindowID p_window = MAIN_WINDOW_ID) override {}

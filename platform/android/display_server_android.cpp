@@ -354,6 +354,10 @@ void DisplayServerAndroid::window_set_title(const String &p_title, DisplayServer
 	// Not supported on Android.
 }
 
+String DisplayServerAndroid::window_get_title(WindowID p_window) const {
+	return String();
+}
+
 int DisplayServerAndroid::window_get_current_screen(DisplayServer::WindowID p_window) const {
 	return SCREEN_OF_MAIN_WINDOW;
 }
@@ -372,6 +376,10 @@ Point2i DisplayServerAndroid::window_get_position_with_decorations(DisplayServer
 
 void DisplayServerAndroid::window_set_position(const Point2i &p_position, DisplayServer::WindowID p_window) {
 	// Not supported on Android.
+}
+
+DisplayServer::WindowID DisplayServerAndroid::window_get_transient(WindowID p_window) const {
+	return INVALID_WINDOW_ID;
 }
 
 void DisplayServerAndroid::window_set_transient(DisplayServer::WindowID p_window, DisplayServer::WindowID p_parent) {

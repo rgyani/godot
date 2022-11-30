@@ -406,6 +406,8 @@ void EditorNode::shortcut_input(const Ref<InputEvent> &p_event) {
 			_editor_select_prev();
 		} else if (ED_IS_SHORTCUT("editor/command_palette", p_event)) {
 			_open_command_palette();
+		} else if (ED_IS_SHORTCUT("editor/open_win_mon", p_event)) {
+			win_mon->popup();
 		} else {
 		}
 
@@ -7452,6 +7454,10 @@ EditorNode::EditorNode() {
 		DisplayServer::get_singleton()->window_set_flag(DisplayServer::WINDOW_FLAG_EXTEND_TO_TITLE, true, DisplayServer::MAIN_WINDOW_ID);
 		menu_hb->set_can_move_window(true);
 	}
+
+	win_mon = memnew(EditorWindowMonitorDialog);
+	gui_base->add_child(win_mon);
+	ED_SHORTCUT_AND_COMMAND("editor/open_win_mon", TTR("Open Window Monitor"));
 
 	String exec = OS::get_singleton()->get_executable_path();
 	// Save editor executable path for third-party tools.

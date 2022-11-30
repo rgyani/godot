@@ -346,6 +346,7 @@ public:
 	virtual void window_set_drop_files_callback(const Callable &p_callable, WindowID p_window = MAIN_WINDOW_ID) = 0;
 
 	virtual void window_set_title(const String &p_title, WindowID p_window = MAIN_WINDOW_ID) = 0;
+	virtual String window_get_title(WindowID p_window = MAIN_WINDOW_ID) const = 0;
 
 	virtual void window_set_mouse_passthrough(const Vector<Vector2> &p_region, WindowID p_window = MAIN_WINDOW_ID);
 
@@ -356,6 +357,7 @@ public:
 	virtual Point2i window_get_position_with_decorations(WindowID p_window = MAIN_WINDOW_ID) const = 0;
 	virtual void window_set_position(const Point2i &p_position, WindowID p_window = MAIN_WINDOW_ID) = 0;
 
+	virtual WindowID window_get_transient(WindowID p_window) const = 0;
 	virtual void window_set_transient(WindowID p_window, WindowID p_parent) = 0;
 	virtual void window_set_exclusive(WindowID p_window, bool p_exclusive);
 

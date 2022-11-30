@@ -97,6 +97,7 @@ extern void godot_js_display_screen_size_get(int32_t *p_x, int32_t *p_y);
 extern int godot_js_display_fullscreen_request();
 extern int godot_js_display_fullscreen_exit();
 extern void godot_js_display_window_title_set(const char *p_text);
+extern void godot_js_display_window_title_get(void (*p_callback)(const char *p_text));
 extern void godot_js_display_window_icon_set(const uint8_t *p_ptr, int p_len);
 extern int godot_js_display_has_webgl(int p_version);
 

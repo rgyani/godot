@@ -2293,6 +2293,17 @@ void DisplayServerMacOS::window_set_title(const String &p_title, WindowID p_wind
 	[wd.window_object setTitle:[NSString stringWithUTF8String:p_title.utf8().get_data()]];
 }
 
+String DisplayServerMacOS::window_get_title(WindowID p_window) const {
+	_THREAD_SAFE_METHOD_
+
+	ERR_FAIL_COND_V(!windows.has(p_window), String());
+	const WindowData &wd = windows[p_window];
+
+	String title;
+	title.parse_utf8([[wd.window_object title] UTF8String]);
+	return title;
+}
+
 void DisplayServerMacOS::window_set_mouse_passthrough(const Vector<Vector2> &p_region, WindowID p_window) {
 	_THREAD_SAFE_METHOD_
 
@@ -2465,6 +2476,14 @@ void DisplayServerMacOS::window_set_position(const Point2i &p_position, WindowID
 
 	_update_window_style(wd);
 	update_mouse_pos(wd, [wd.window_object mouseLocationOutsideOfEventStream]);
+}
+
+DisplayServer::WindowID DisplayServerMacOS::window_get_transient(WindowID p_window) const {
+	_THREAD_SAFE_METHOD_
+
+	ERR_FAIL_COND_V(!windows.has(p_window), INVALID_WINDOW_ID);
+	const WindowData &wd = windows[p_window];
+	return wd.transient_parent;
 }
 
 void DisplayServerMacOS::window_set_transient(WindowID p_window, WindowID p_parent) {

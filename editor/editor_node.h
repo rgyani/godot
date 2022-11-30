@@ -38,6 +38,7 @@
 #include "editor/editor_plugin.h"
 #include "editor/editor_run.h"
 #include "editor/editor_title_bar.h"
+#include "editor/editor_window_monitor_dialog.h"
 #include "editor/export/editor_export.h"
 
 typedef void (*EditorNodeInitCallback)();
@@ -355,6 +356,7 @@ private:
 	Button *play_custom_scene_button = nullptr;
 	PanelContainer *write_movie_panel = nullptr;
 	Button *write_movie_button = nullptr;
+	EditorWindowMonitorDialog *win_mon = nullptr;
 
 	Timer *screenshot_timer = nullptr;
 

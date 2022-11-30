@@ -934,6 +934,15 @@ void DisplayServerWeb::window_set_title(const String &p_title, WindowID p_window
 	godot_js_display_window_title_set(p_title.utf8().get_data());
 }
 
+void DisplayServerWeb::update_title_callback(const char *p_text) {
+	get_singleton()->title = String::utf8(p_text);
+}
+
+String DisplayServerWeb::window_get_title(WindowID p_window) const {
+	godot_js_display_window_title_get(update_title_callback);
+	return title;
+}
+
 int DisplayServerWeb::window_get_current_screen(WindowID p_window) const {
 	return 1;
 }
@@ -950,8 +959,16 @@ Point2i DisplayServerWeb::window_get_position_with_decorations(WindowID p_window
 	return Point2i();
 }
 
+Point2i DisplayServerWeb::window_get_position_with_decorations(WindowID p_window) const {
+	return Point2i(); // TODO Does this need implementation?
+}
+
 void DisplayServerWeb::window_set_position(const Point2i &p_position, WindowID p_window) {
 	// Not supported.
+}
+
+DisplayServer::WindowID DisplayServerWeb::window_get_transient(WindowID p_window) const {
+	return INVALID_WINDOW_ID;
 }
 
 void DisplayServerWeb::window_set_transient(WindowID p_window, WindowID p_parent) {

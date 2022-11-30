@@ -44,6 +44,7 @@
 #include "editor/editor_settings.h"
 #include "editor/editor_translation_parser.h"
 #include "editor/editor_undo_redo_manager.h"
+#include "editor/editor_window_monitor_dialog.h"
 #include "editor/filesystem_dock.h"
 #include "editor/import/editor_import_plugin.h"
 #include "editor/import/resource_importer_scene.h"
@@ -152,6 +153,8 @@ void register_editor_types() {
 	GDREGISTER_CLASS(EditorCommandPalette);
 	GDREGISTER_CLASS(EditorDebuggerPlugin);
 	GDREGISTER_ABSTRACT_CLASS(EditorDebuggerSession);
+
+	GDREGISTER_CLASS(EditorWindowMonitorDialog);
 
 	// This list is alphabetized, and plugins that depend on Node2D are in their own section below.
 	EditorPlugins::add_by_type<AnimationTreeEditorPlugin>();

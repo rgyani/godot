@@ -381,6 +381,8 @@ public:
 	virtual ObjectID window_get_attached_instance_id(WindowID p_window = MAIN_WINDOW_ID) const override;
 
 	virtual void window_set_title(const String &p_title, WindowID p_window = MAIN_WINDOW_ID) override;
+	virtual String window_get_title(WindowID p_window = MAIN_WINDOW_ID) const override;
+
 	virtual void window_set_mouse_passthrough(const Vector<Vector2> &p_region, WindowID p_window = MAIN_WINDOW_ID) override;
 
 	virtual void window_set_rect_changed_callback(const Callable &p_callable, WindowID p_window = MAIN_WINDOW_ID) override;
@@ -400,6 +402,7 @@ public:
 	virtual Size2i window_get_max_size(WindowID p_window = MAIN_WINDOW_ID) const override;
 	virtual void gl_window_make_current(DisplayServer::WindowID p_window_id) override;
 
+	virtual WindowID window_get_transient(WindowID p_window) const override;
 	virtual void window_set_transient(WindowID p_window, WindowID p_parent) override;
 
 	virtual void window_set_min_size(const Size2i p_size, WindowID p_window = MAIN_WINDOW_ID) override;

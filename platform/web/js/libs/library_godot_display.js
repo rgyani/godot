@@ -565,6 +565,18 @@ const GodotDisplay = {
 		document.title = GodotRuntime.parseString(p_data);
 	},
 
+	godot_js_display_window_title_get__sig: 'vi',
+	godot_js_display_window_title_get: function (callback) {
+		const func = GodotRuntime.get_func(callback);
+		try {
+			const ptr = GodotRuntime.allocString(document.title);
+			func(ptr);
+			GodotRuntime.free(ptr);
+		} catch (e) {
+			// Fail graciously.
+		}
+	},
+
 	godot_js_display_window_icon_set__sig: 'vii',
 	godot_js_display_window_icon_set: function (p_ptr, p_len) {
 		let link = document.getElementById('-gd-engine-icon');

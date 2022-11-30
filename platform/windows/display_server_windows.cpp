@@ -817,6 +817,17 @@ void DisplayServerWindows::window_set_title(const String &p_title, WindowID p_wi
 	SetWindowTextW(windows[p_window].hWnd, (LPCWSTR)(p_title.utf16().get_data()));
 }
 
+String DisplayServerWindows::window_get_title(WindowID p_window) const {
+	_THREAD_SAFE_METHOD_
+
+	ERR_FAIL_COND_V(!windows.has(p_window), String());
+
+	WCHAR buf[1024];
+	memset(buf, 0, 1024 * sizeof(WCHAR));
+	int len = GetWindowTextW(windows[p_window].hWnd, buf, 1024);
+	return String::utf16((const char16_t *)buf, len);
+}
+
 void DisplayServerWindows::window_set_mouse_passthrough(const Vector<Vector2> &p_region, WindowID p_window) {
 	_THREAD_SAFE_METHOD_
 
@@ -991,6 +1002,14 @@ void DisplayServerWindows::window_set_exclusive(WindowID p_window, bool p_exclus
 			}
 		}
 	}
+}
+
+DisplayServer::WindowID DisplayServerWindows::window_get_transient(WindowID p_window) const {
+	_THREAD_SAFE_METHOD_
+
+	ERR_FAIL_COND_V(!windows.has(p_window), INVALID_WINDOW_ID);
+	const WindowData &wd = windows[p_window];
+	return wd.transient_parent;
 }
 
 void DisplayServerWindows::window_set_transient(WindowID p_window, WindowID p_parent) {

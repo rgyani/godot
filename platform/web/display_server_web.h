@@ -66,6 +66,7 @@ private:
 	Callable input_text_callback;
 	Callable drop_files_callback;
 
+	String title;
 	String clipboard;
 	Point2 touches[32];
 
@@ -104,6 +105,7 @@ private:
 	static void request_quit_callback();
 	static void window_blur_callback();
 	static void update_voices_callback(int p_size, const char **p_voice);
+	static void update_title_callback(const char *p_text);
 	static void update_clipboard_callback(const char *p_text);
 	static void send_window_event_callback(int p_notification);
 	static void drop_files_js_callback(char **p_filev, int p_filec);
@@ -177,6 +179,7 @@ public:
 	virtual void window_set_drop_files_callback(const Callable &p_callable, WindowID p_window = MAIN_WINDOW_ID) override;
 
 	virtual void window_set_title(const String &p_title, WindowID p_window = MAIN_WINDOW_ID) override;
+	virtual String window_get_title(WindowID p_window = MAIN_WINDOW_ID) const override;
 
 	virtual int window_get_current_screen(WindowID p_window = MAIN_WINDOW_ID) const override;
 	virtual void window_set_current_screen(int p_screen, WindowID p_window = MAIN_WINDOW_ID) override;
@@ -185,6 +188,7 @@ public:
 	virtual Point2i window_get_position_with_decorations(WindowID p_window = MAIN_WINDOW_ID) const override;
 	virtual void window_set_position(const Point2i &p_position, WindowID p_window = MAIN_WINDOW_ID) override;
 
+	virtual WindowID window_get_transient(WindowID p_window) const override;
 	virtual void window_set_transient(WindowID p_window, WindowID p_parent) override;
 
 	virtual void window_set_max_size(const Size2i p_size, WindowID p_window = MAIN_WINDOW_ID) override;
