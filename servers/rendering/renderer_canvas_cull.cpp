@@ -450,6 +450,20 @@ void RendererCanvasCull::canvas_item_initialize(RID p_rid) {
 	canvas_item_owner.initialize_rid(p_rid);
 }
 
+void RendererCanvasCull::canvas_item_set_oversampling(RID p_item, float p_oversampling) {
+	Item *canvas_item = canvas_item_owner.get_or_null(p_item);
+	ERR_FAIL_COND(!canvas_item);
+
+	canvas_item->oversampling = p_oversampling;
+}
+
+float RendererCanvasCull::canvas_item_get_oversampling(RID p_item) const {
+	const Item *canvas_item = canvas_item_owner.get_or_null(p_item);
+	ERR_FAIL_COND_V(!canvas_item, 1.0);
+
+	return canvas_item->oversampling;
+}
+
 void RendererCanvasCull::canvas_item_set_parent(RID p_item, RID p_parent) {
 	Item *canvas_item = canvas_item_owner.get_or_null(p_item);
 	ERR_FAIL_COND(!canvas_item);

@@ -1307,6 +1307,8 @@ public:
 
 	virtual RID canvas_item_create() = 0;
 	virtual void canvas_item_set_parent(RID p_item, RID p_parent) = 0;
+	virtual void canvas_item_set_oversampling(RID p_item, float p_oversampling) = 0;
+	virtual float canvas_item_get_oversampling(RID p_item) const = 0;
 
 	virtual void canvas_item_set_default_texture_filter(RID p_item, CanvasItemTextureFilter p_filter) = 0;
 	virtual void canvas_item_set_default_texture_repeat(RID p_item, CanvasItemTextureRepeat p_repeat) = 0;

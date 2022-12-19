@@ -341,11 +341,6 @@ public:
 	GDVIRTUAL1RC(Dictionary, _font_supported_feature_list, RID);
 	GDVIRTUAL1RC(Dictionary, _font_supported_variation_list, RID);
 
-	virtual double font_get_global_oversampling() const override;
-	virtual void font_set_global_oversampling(double p_oversampling) override;
-	GDVIRTUAL0RC(double, _font_get_global_oversampling);
-	GDVIRTUAL1(_font_set_global_oversampling, double);
-
 	virtual Vector2 get_hex_code_box_size(int64_t p_size, int64_t p_index) const override;
 	virtual void draw_hex_code_box(const RID &p_canvas, int64_t p_size, const Vector2 &p_pos, int64_t p_index, const Color &p_color) const override;
 	GDVIRTUAL2RC(Vector2, _get_hex_code_box_size, int64_t, int64_t);

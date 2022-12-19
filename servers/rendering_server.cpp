@@ -2588,6 +2588,8 @@ void RenderingServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("canvas_item_set_modulate", "item", "color"), &RenderingServer::canvas_item_set_modulate);
 	ClassDB::bind_method(D_METHOD("canvas_item_set_self_modulate", "item", "color"), &RenderingServer::canvas_item_set_self_modulate);
 	ClassDB::bind_method(D_METHOD("canvas_item_set_draw_behind_parent", "item", "enabled"), &RenderingServer::canvas_item_set_draw_behind_parent);
+	ClassDB::bind_method(D_METHOD("canvas_item_set_oversampling", "item", "oversampling"), &RenderingServer::canvas_item_set_oversampling);
+	ClassDB::bind_method(D_METHOD("canvas_item_get_oversampling", "item"), &RenderingServer::canvas_item_get_oversampling);
 
 	/* Primitives */
 

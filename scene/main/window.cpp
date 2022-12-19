@@ -875,14 +875,14 @@ void Window::_update_window_size() {
 void Window::_update_viewport_size() {
 	//update the viewport part
 
-	Size2i final_size;
-	Size2i final_size_override;
-	Rect2i attach_to_screen_rect(Point2i(), size);
+	Size2 final_size;
+	Size2 final_size_override;
+	Rect2 attach_to_screen_rect(Point2i(), size);
 	Transform2D stretch_transform_new;
-	float font_oversampling = 1.0;
+	oversampling = 1.0;
 
 	if (content_scale_mode == CONTENT_SCALE_MODE_DISABLED || content_scale_size.x == 0 || content_scale_size.y == 0) {
-		font_oversampling = content_scale_factor;
+		oversampling = content_scale_factor;
 		final_size = size;
 		final_size_override = Size2(size) / content_scale_factor;
 
@@ -955,13 +955,12 @@ void Window::_update_viewport_size() {
 		switch (content_scale_mode) {
 			case CONTENT_SCALE_MODE_DISABLED: {
 				// Already handled above
-				//_update_font_oversampling(1.0);
 			} break;
 			case CONTENT_SCALE_MODE_CANVAS_ITEMS: {
 				final_size = screen_size;
 				final_size_override = viewport_size / content_scale_factor;
 				attach_to_screen_rect = Rect2(margin, screen_size);
-				font_oversampling = (screen_size.x / viewport_size.x) * content_scale_factor;
+				oversampling = (screen_size.x / viewport_size.x) * content_scale_factor;
 
 				Size2 scale = Vector2(screen_size) / Vector2(final_size_override);
 				stretch_transform_new.scale(scale);
@@ -975,8 +974,21 @@ void Window::_update_viewport_size() {
 		}
 	}
 
+	if (!use_font_oversampling) {
+		oversampling = 1.0;
+	}
+
+	Rect2 attach_to_screen_rect_input = attach_to_screen_rect;
+	if (use_hidpi_scaling && window_id != DisplayServer::INVALID_WINDOW_ID) {
+		float scale = DisplayServer::get_singleton()->screen_get_scale(DisplayServer::get_singleton()->window_get_current_screen(window_id));
+		stretch_transform_new.scale(Vector2(scale, scale));
+		oversampling *= scale;
+		final_size *= scale;
+		attach_to_screen_rect.size *= scale;
+	}
+
 	bool allocate = is_inside_tree() && visible && (window_id != DisplayServer::INVALID_WINDOW_ID || embedder != nullptr);
-	_set_size(final_size, final_size_override, attach_to_screen_rect, stretch_transform_new, allocate);
+	_set_size(final_size, final_size_override, attach_to_screen_rect_input, stretch_transform_new, allocate);
 
 	if (window_id != DisplayServer::INVALID_WINDOW_ID) {
 		RenderingServer::get_singleton()->viewport_attach_to_screen(get_viewport_rid(), attach_to_screen_rect, window_id);
@@ -984,20 +996,15 @@ void Window::_update_viewport_size() {
 		RenderingServer::get_singleton()->viewport_attach_to_screen(get_viewport_rid(), Rect2i(), DisplayServer::INVALID_WINDOW_ID);
 	}
 
-	if (window_id == DisplayServer::MAIN_WINDOW_ID) {
-		if (!use_font_oversampling) {
-			font_oversampling = 1.0;
-		}
-		if (TS->font_get_global_oversampling() != font_oversampling) {
-			TS->font_set_global_oversampling(font_oversampling);
-		}
-	}
-
 	notification(NOTIFICATION_WM_SIZE_CHANGED);
 
 	if (embedder) {
 		embedder->_sub_window_update(this);
 	}
+}
+
+real_t Window::get_oversampling() const {
+	return oversampling;
 }
 
 void Window::_update_window_callbacks() {
@@ -1194,10 +1201,16 @@ real_t Window::get_content_scale_factor() const {
 	return content_scale_factor;
 }
 
+void Window::set_use_hidpi_scaling(bool p_hidpi_scaling) {
+	use_hidpi_scaling = p_hidpi_scaling;
+	_update_viewport_size();
+}
+
+bool Window::is_using_hidpi_scaling() const {
+	return use_hidpi_scaling;
+}
+
 void Window::set_use_font_oversampling(bool p_oversampling) {
-	if (is_inside_tree() && window_id != DisplayServer::MAIN_WINDOW_ID) {
-		ERR_FAIL_MSG("Only the root window can set and use font oversampling.");
-	}
 	use_font_oversampling = p_oversampling;
 	_update_viewport_size();
 }
@@ -2134,6 +2147,9 @@ void Window::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_content_scale_factor", "factor"), &Window::set_content_scale_factor);
 	ClassDB::bind_method(D_METHOD("get_content_scale_factor"), &Window::get_content_scale_factor);
+
+	ClassDB::bind_method(D_METHOD("set_use_hidpi_scaling", "enable"), &Window::set_use_hidpi_scaling);
+	ClassDB::bind_method(D_METHOD("is_using_hidpi_scaling"), &Window::is_using_hidpi_scaling);
 
 	ClassDB::bind_method(D_METHOD("set_use_font_oversampling", "enable"), &Window::set_use_font_oversampling);
 	ClassDB::bind_method(D_METHOD("is_using_font_oversampling"), &Window::is_using_font_oversampling);

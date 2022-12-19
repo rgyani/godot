@@ -536,6 +536,13 @@ static int QueryDpiForMonitor(HMONITOR hmon, _MonitorDpiType dpiType = MDT_Defau
 	return (dpiX + dpiY) / 2;
 }
 
+static BOOL CALLBACK _MonitorEnumProcMaxDpi(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
+	EnumDpiData *data = (EnumDpiData *)dwData;
+	data->dpi = MAX(data->dpi, QueryDpiForMonitor(hMonitor));
+
+	return TRUE;
+}
+
 static BOOL CALLBACK _MonitorEnumProcDpi(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
 	EnumDpiData *data = (EnumDpiData *)dwData;
 	if (data->count == data->screen) {
@@ -553,6 +560,29 @@ int DisplayServerWindows::screen_get_dpi(int p_screen) const {
 	EnumDisplayMonitors(nullptr, nullptr, _MonitorEnumProcDpi, (LPARAM)&data);
 	return data.dpi;
 }
+
+float DisplayServerWindows::screen_get_scale(int p_screen) const {
+	_THREAD_SAFE_METHOD_
+
+	if (OS::get_singleton()->is_hidpi_allowed()) {
+		EnumDpiData data = { 0, p_screen == SCREEN_OF_MAIN_WINDOW ? window_get_current_screen() : p_screen, 72 };
+		EnumDisplayMonitors(nullptr, nullptr, _MonitorEnumProcDpi, (LPARAM)&data);
+		return (float)data.dpi / 96.0f;
+	}
+	return 1.0f;
+}
+
+float DisplayServerWindows::screen_get_max_scale() const {
+	_THREAD_SAFE_METHOD_
+
+	if (OS::get_singleton()->is_hidpi_allowed()) {
+		EnumDpiData data = { 0, 0, 72 };
+		EnumDisplayMonitors(nullptr, nullptr, _MonitorEnumProcMaxDpi, (LPARAM)&data);
+		return (float)data.dpi / 96.0f;
+	}
+	return 1.0f;
+}
+
 float DisplayServerWindows::screen_get_refresh_rate(int p_screen) const {
 	_THREAD_SAFE_METHOD_
 
@@ -3116,6 +3146,10 @@ LRESULT DisplayServerWindows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 
 		} break;
 
+		case WM_DPICHANGED: {
+			_send_window_event(windows[window_id], DisplayServerWindows::WINDOW_EVENT_DPI_CHANGE);
+		} break;
+
 		case WM_WINDOWPOSCHANGED: {
 			Rect2i window_client_rect;
 			Rect2i window_rect;
@@ -3867,7 +3901,7 @@ DisplayServerWindows::DisplayServerWindows(const String &p_rendering_driver, Win
 			SetProcessDpiAwareness_t SetProcessDpiAwareness = (SetProcessDpiAwareness_t)GetProcAddress(Shcore, "SetProcessDpiAwareness");
 
 			if (SetProcessDpiAwareness) {
-				SetProcessDpiAwareness(SHC_PROCESS_SYSTEM_DPI_AWARE);
+				SetProcessDpiAwareness(SHC_PROCESS_PER_MONITOR_DPI_AWARE);
 			}
 		}
 	}

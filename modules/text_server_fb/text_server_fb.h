@@ -224,7 +224,6 @@ class TextServerFallback : public TextServerExtension {
 		double underline_position = 0.0;
 		double underline_thickness = 0.0;
 		double scale = 1.0;
-		double oversampling = 1.0;
 
 		Vector2i size;
 
@@ -450,7 +449,6 @@ class TextServerFallback : public TextServerExtension {
 
 	// Common data.
 
-	double oversampling = 1.0;
 	mutable RID_PtrOwner<FontFallback> font_owner;
 	mutable RID_PtrOwner<ShapedTextDataFallback> shaped_owner;
 
@@ -712,9 +710,6 @@ public:
 
 	MODBIND1RC(Dictionary, font_supported_feature_list, const RID &);
 	MODBIND1RC(Dictionary, font_supported_variation_list, const RID &);
-
-	MODBIND0RC(double, font_get_global_oversampling);
-	MODBIND1(font_set_global_oversampling, double);
 
 	/* Shaped text buffer interface */
 

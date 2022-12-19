@@ -157,14 +157,11 @@
 	[(GodotWindow *)wd.window_object setAnimDuration:-1.0f];
 
 	// Set window size limits.
-	const float scale = ds->screen_get_max_scale();
 	if (wd.min_size != Size2i()) {
-		Size2i size = wd.min_size / scale;
-		[wd.window_object setContentMinSize:NSMakeSize(size.x, size.y)];
+		[wd.window_object setContentMinSize:NSMakeSize(wd.min_size.x, wd.min_size.y)];
 	}
 	if (wd.max_size != Size2i()) {
-		Size2i size = wd.max_size / scale;
-		[wd.window_object setContentMaxSize:NSMakeSize(size.x, size.y)];
+		[wd.window_object setContentMaxSize:NSMakeSize(wd.max_size.x, wd.max_size.y)];
 	}
 
 	// Restore resizability state.
@@ -194,19 +191,17 @@
 
 	if (new_scale_factor != old_scale_factor) {
 		// Set new display scale and window size.
-		const float scale = ds->screen_get_max_scale();
 		const NSRect content_rect = [wd.window_view frame];
 
-		wd.size.width = content_rect.size.width * scale;
-		wd.size.height = content_rect.size.height * scale;
+		wd.size.width = content_rect.size.width;
+		wd.size.height = content_rect.size.height;
 
 		ds->send_window_event(wd, DisplayServerMacOS::WINDOW_EVENT_DPI_CHANGE);
 
 		CALayer *layer = [wd.window_view layer];
 		if (layer) {
-			layer.contentsScale = scale;
+			layer.contentsScale = [wd.window_object backingScaleFactor];
 		}
-
 		//Force window resize event
 		[self windowDidResize:notification];
 	}
@@ -236,16 +231,14 @@
 
 	DisplayServerMacOS::WindowData &wd = ds->get_window(window_id);
 	const NSRect content_rect = [wd.window_view frame];
-	const float scale = ds->screen_get_max_scale();
-	wd.size.width = content_rect.size.width * scale;
-	wd.size.height = content_rect.size.height * scale;
-
 	CALayer *layer = [wd.window_view layer];
 	if (layer) {
-		layer.contentsScale = scale;
+		layer.contentsScale = [wd.window_object backingScaleFactor];
 	}
+	wd.size.width = content_rect.size.width;
+	wd.size.height = content_rect.size.height;
 
-	ds->window_resize(window_id, wd.size.width, wd.size.height);
+	ds->window_resize(window_id, wd.size.width * layer.contentsScale, wd.size.height * layer.contentsScale);
 
 	if (!wd.rect_changed_callback.is_null()) {
 		Variant size = Rect2i(ds->window_get_position(window_id), ds->window_get_size(window_id));

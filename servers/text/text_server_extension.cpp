@@ -206,9 +206,6 @@ void TextServerExtension::_bind_methods() {
 	GDVIRTUAL_BIND(_font_supported_feature_list, "font_rid");
 	GDVIRTUAL_BIND(_font_supported_variation_list, "font_rid");
 
-	GDVIRTUAL_BIND(_font_get_global_oversampling);
-	GDVIRTUAL_BIND(_font_set_global_oversampling, "oversampling");
-
 	GDVIRTUAL_BIND(_get_hex_code_box_size, "size", "index");
 	GDVIRTUAL_BIND(_draw_hex_code_box, "canvas", "size", "pos", "index", "color");
 
@@ -925,16 +922,6 @@ Dictionary TextServerExtension::font_supported_variation_list(const RID &p_font_
 	Dictionary ret;
 	GDVIRTUAL_CALL(_font_supported_variation_list, p_font_rid, ret);
 	return ret;
-}
-
-double TextServerExtension::font_get_global_oversampling() const {
-	double ret = 0;
-	GDVIRTUAL_CALL(_font_get_global_oversampling, ret);
-	return ret;
-}
-
-void TextServerExtension::font_set_global_oversampling(double p_oversampling) {
-	GDVIRTUAL_CALL(_font_set_global_oversampling, p_oversampling);
 }
 
 Vector2 TextServerExtension::get_hex_code_box_size(int64_t p_size, int64_t p_index) const {

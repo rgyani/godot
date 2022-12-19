@@ -127,6 +127,22 @@ void CanvasItem::_redraw_callback() {
 		return;
 	}
 
+	Node *parent = get_parent();
+	Viewport *viewport = nullptr;
+	while (parent) {
+		viewport = Object::cast_to<Viewport>(parent);
+		if (viewport) {
+			break;
+		}
+		parent = parent->get_parent();
+	}
+	Window *_window = Object::cast_to<Window>(viewport);
+	if (_window) {
+		RenderingServer::get_singleton()->canvas_item_set_oversampling(canvas_item, _window->get_oversampling());
+	} else {
+		RenderingServer::get_singleton()->canvas_item_set_oversampling(canvas_item, 1.0);
+	}
+
 	RenderingServer::get_singleton()->canvas_item_clear(get_canvas_item());
 	//todo updating = true - only allow drawing here
 	if (is_visible_in_tree()) {

@@ -823,6 +823,8 @@ public:
 
 	FUNCRIDSPLIT(canvas_item)
 	FUNC2(canvas_item_set_parent, RID, RID)
+	FUNC2(canvas_item_set_oversampling, RID, float)
+	FUNC1RC(float, canvas_item_get_oversampling, RID)
 
 	FUNC2(canvas_item_set_default_texture_filter, RID, CanvasItemTextureFilter)
 	FUNC2(canvas_item_set_default_texture_repeat, RID, CanvasItemTextureRepeat)

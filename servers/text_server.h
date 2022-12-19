@@ -386,9 +386,6 @@ public:
 	virtual Dictionary font_supported_feature_list(const RID &p_font_rid) const = 0;
 	virtual Dictionary font_supported_variation_list(const RID &p_font_rid) const = 0;
 
-	virtual double font_get_global_oversampling() const = 0;
-	virtual void font_set_global_oversampling(double p_oversampling) = 0;
-
 	virtual Vector2 get_hex_code_box_size(int64_t p_size, int64_t p_index) const;
 	virtual void draw_hex_code_box(const RID &p_canvas, int64_t p_size, const Vector2 &p_pos, int64_t p_index, const Color &p_color) const;
 

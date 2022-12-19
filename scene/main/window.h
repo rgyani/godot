@@ -101,6 +101,7 @@ private:
 	bool visible = true;
 	bool focused = false;
 
+	bool use_hidpi_scaling = true;
 	bool use_font_oversampling = false;
 	bool transient = false;
 	bool exclusive = false;
@@ -118,6 +119,8 @@ private:
 	ContentScaleMode content_scale_mode = CONTENT_SCALE_MODE_DISABLED;
 	ContentScaleAspect content_scale_aspect = CONTENT_SCALE_ASPECT_IGNORE;
 	real_t content_scale_factor = 1.0;
+
+	real_t oversampling = 1.0;
 
 	void _make_window();
 	void _clear_window();
@@ -269,6 +272,9 @@ public:
 	void set_content_scale_factor(real_t p_factor);
 	real_t get_content_scale_factor() const;
 
+	void set_use_hidpi_scaling(bool p_hidpi_scaling);
+	bool is_using_hidpi_scaling() const;
+
 	void set_use_font_oversampling(bool p_oversampling);
 	bool is_using_font_oversampling() const;
 
@@ -359,6 +365,8 @@ public:
 
 	Rect2i get_parent_rect() const;
 	virtual DisplayServer::WindowID get_window_id() const override;
+
+	virtual real_t get_oversampling() const;
 
 	Window();
 	~Window();

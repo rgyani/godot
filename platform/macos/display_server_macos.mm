@@ -111,7 +111,6 @@ NSMenu *DisplayServerMacOS::_get_menu_root(const String &p_menu_root) {
 
 DisplayServerMacOS::WindowID DisplayServerMacOS::_create_window(WindowMode p_mode, VSyncMode p_vsync_mode, const Rect2i &p_rect) {
 	WindowID id;
-	const float scale = screen_get_max_scale();
 	{
 		WindowData wd;
 
@@ -127,7 +126,7 @@ DisplayServerMacOS::WindowID DisplayServerMacOS::_create_window(WindowMode p_mod
 
 		// initWithContentRect uses bottom-left corner of the window’s frame as origin.
 		wd.window_object = [[GodotWindow alloc]
-				initWithContentRect:NSMakeRect(position.x / scale, (position.y - p_rect.size.height) / scale, p_rect.size.width / scale, p_rect.size.height / scale)
+				initWithContentRect:NSMakeRect(position.x, (position.y - p_rect.size.height), p_rect.size.width, p_rect.size.height)
 						  styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable
 							backing:NSBackingStoreBuffered
 							  defer:NO];
@@ -152,18 +151,17 @@ DisplayServerMacOS::WindowID DisplayServerMacOS::_create_window(WindowMode p_mod
 
 		CALayer *layer = [(NSView *)wd.window_view layer];
 		if (layer) {
-			layer.contentsScale = scale;
+			layer.contentsScale = [wd.window_object backingScaleFactor];
 		}
-
 #if defined(VULKAN_ENABLED)
 		if (context_vulkan) {
-			Error err = context_vulkan->window_create(window_id_counter, p_vsync_mode, wd.window_view, p_rect.size.width, p_rect.size.height);
+			Error err = context_vulkan->window_create(window_id_counter, p_vsync_mode, wd.window_view, p_rect.size.width * layer.contentsScale, p_rect.size.height * layer.contentsScale);
 			ERR_FAIL_COND_V_MSG(err != OK, INVALID_WINDOW_ID, "Can't create a Vulkan context");
 		}
 #endif
 #if defined(GLES3_ENABLED)
 		if (gl_manager) {
-			Error err = gl_manager->window_create(window_id_counter, wd.window_view, p_rect.size.width, p_rect.size.height);
+			Error err = gl_manager->window_create(window_id_counter, wd.window_view, p_rect.size.width * layer.contentsScale, p_rect.size.height * layer.contentsScale);
 			ERR_FAIL_COND_V_MSG(err != OK, INVALID_WINDOW_ID, "Can't create an OpenGL context");
 		}
 		window_set_vsync_mode(p_vsync_mode, window_id_counter);
@@ -177,22 +175,21 @@ DisplayServerMacOS::WindowID DisplayServerMacOS::_create_window(WindowMode p_mod
 	window_set_mode(p_mode, id);
 
 	const NSRect contentRect = [wd.window_view frame];
-	wd.size.width = contentRect.size.width * scale;
-	wd.size.height = contentRect.size.height * scale;
-
 	CALayer *layer = [(NSView *)wd.window_view layer];
 	if (layer) {
-		layer.contentsScale = scale;
+		layer.contentsScale = [wd.window_object backingScaleFactor];
 	}
+	wd.size.width = contentRect.size.width;
+	wd.size.height = contentRect.size.height;
 
 #if defined(GLES3_ENABLED)
 	if (gl_manager) {
-		gl_manager->window_resize(id, wd.size.width, wd.size.height);
+		gl_manager->window_resize(id, wd.size.width * layer.contentsScale, wd.size.height * layer.contentsScale);
 	}
 #endif
 #if defined(VULKAN_ENABLED)
 	if (context_vulkan) {
-		context_vulkan->window_resize(id, wd.size.width, wd.size.height);
+		context_vulkan->window_resize(id, wd.size.width * layer.contentsScale, wd.size.height * layer.contentsScale);
 	}
 #endif
 
@@ -306,7 +303,7 @@ Point2i DisplayServerMacOS::_get_native_screen_position(int p_screen) const {
 	if ((NSUInteger)p_screen < [screenArray count]) {
 		NSRect nsrect = [[screenArray objectAtIndex:p_screen] frame];
 		// Return the top-left corner of the screen, for OS X the y starts at the bottom.
-		return Point2i(nsrect.origin.x, nsrect.origin.y + nsrect.size.height) * screen_get_max_scale();
+		return Point2i(nsrect.origin.x, nsrect.origin.y + nsrect.size.height);
 	}
 
 	return Point2i();
@@ -631,9 +628,8 @@ void DisplayServerMacOS::get_key_modifier_state(unsigned int p_macos_state, Ref<
 
 void DisplayServerMacOS::update_mouse_pos(DisplayServerMacOS::WindowData &p_wd, NSPoint p_location_in_window) {
 	const NSRect content_rect = [p_wd.window_view frame];
-	const float scale = screen_get_max_scale();
-	p_wd.mouse_pos.x = p_location_in_window.x * scale;
-	p_wd.mouse_pos.y = (content_rect.size.height - p_location_in_window.y) * scale;
+	p_wd.mouse_pos.x = p_location_in_window.x;
+	p_wd.mouse_pos.y = (content_rect.size.height - p_location_in_window.y);
 	Input::get_singleton()->set_mouse_position(p_wd.mouse_pos);
 }
 
@@ -1976,8 +1972,7 @@ void DisplayServerMacOS::warp_mouse(const Point2i &p_position) {
 
 		// Local point in window coords.
 		const NSRect contentRect = [wd.window_view frame];
-		const float scale = screen_get_max_scale();
-		NSRect pointInWindowRect = NSMakeRect(p_position.x / scale, contentRect.size.height - (p_position.y / scale - 1), 0, 0);
+		NSRect pointInWindowRect = NSMakeRect(p_position.x, contentRect.size.height - (p_position.y - 1), 0, 0);
 		NSPoint pointOnScreen = [[wd.window_view window] convertRectToScreen:pointInWindowRect].origin;
 
 		// Point in scren coords.
@@ -1998,13 +1993,11 @@ Point2i DisplayServerMacOS::mouse_get_position() const {
 	_THREAD_SAFE_METHOD_
 
 	const NSPoint mouse_pos = [NSEvent mouseLocation];
-	const float scale = screen_get_max_scale();
 
 	for (NSScreen *screen in [NSScreen screens]) {
 		NSRect frame = [screen frame];
 		if (NSMouseInRect(mouse_pos, frame, NO)) {
 			Vector2i pos = Vector2i((int)mouse_pos.x, (int)mouse_pos.y);
-			pos *= scale;
 			pos -= _get_screens_origin();
 			pos.y *= -1;
 			return pos;
@@ -2085,7 +2078,7 @@ Size2i DisplayServerMacOS::screen_get_size(int p_screen) const {
 	if ((NSUInteger)p_screen < [screenArray count]) {
 		// Note: Use frame to get the whole screen size.
 		NSRect nsrect = [[screenArray objectAtIndex:p_screen] frame];
-		return Size2i(nsrect.size.width, nsrect.size.height) * screen_get_max_scale();
+		return Size2i(nsrect.size.width, nsrect.size.height);
 	}
 
 	return Size2i();
@@ -2136,8 +2129,16 @@ float DisplayServerMacOS::screen_get_scale(int p_screen) const {
 float DisplayServerMacOS::screen_get_max_scale() const {
 	_THREAD_SAFE_METHOD_
 
-	// Note: Do not update max display scale on screen configuration change, existing editor windows can't be rescaled on the fly.
-	return display_max_scale;
+	float max_scale = 1.f;
+	if (OS::get_singleton()->is_hidpi_allowed()) {
+		for (NSScreen *screen in [NSScreen screens]) {
+			if ([screen respondsToSelector:@selector(backingScaleFactor)]) {
+				max_scale = fmax(max_scale, [screen backingScaleFactor]);
+			}
+		}
+	}
+
+	return max_scale;
 }
 
 Rect2i DisplayServerMacOS::screen_get_usable_rect(int p_screen) const {
@@ -2149,12 +2150,11 @@ Rect2i DisplayServerMacOS::screen_get_usable_rect(int p_screen) const {
 
 	NSArray *screenArray = [NSScreen screens];
 	if ((NSUInteger)p_screen < [screenArray count]) {
-		const float scale = screen_get_max_scale();
 		NSRect nsrect = [[screenArray objectAtIndex:p_screen] visibleFrame];
 
-		Point2i position = Point2i(nsrect.origin.x, nsrect.origin.y + nsrect.size.height) * scale - _get_screens_origin();
+		Point2i position = Point2i(nsrect.origin.x, nsrect.origin.y + nsrect.size.height) - _get_screens_origin();
 		position.y *= -1;
-		Size2i size = Size2i(nsrect.size.width, nsrect.size.height) * scale;
+		Size2i size = Size2i(nsrect.size.width, nsrect.size.height);
 
 		return Rect2i(position, size);
 	}
@@ -2403,10 +2403,8 @@ Point2i DisplayServerMacOS::window_get_position(WindowID p_window) const {
 	Point2i pos;
 
 	// Return the position of the top-left corner, for OS X the y starts at the bottom.
-	const float scale = screen_get_max_scale();
 	pos.x = nsrect.origin.x;
 	pos.y = (nsrect.origin.y + nsrect.size.height);
-	pos *= scale;
 	pos -= _get_screens_origin();
 	// OS X native y-coordinate relative to _get_screens_origin() is negative,
 	// Godot expects a positive value.
@@ -2424,10 +2422,8 @@ Point2i DisplayServerMacOS::window_get_position_with_decorations(WindowID p_wind
 	Point2i pos;
 
 	// Return the position of the top-left corner, for OS X the y starts at the bottom.
-	const float scale = screen_get_max_scale();
 	pos.x = nsrect.origin.x;
 	pos.y = (nsrect.origin.y + nsrect.size.height);
-	pos *= scale;
 	pos -= _get_screens_origin();
 	// OS X native y-coordinate relative to _get_screens_origin() is negative,
 	// Godot expects a positive value.
@@ -2450,7 +2446,6 @@ void DisplayServerMacOS::window_set_position(const Point2i &p_position, WindowID
 	// Godot passes a positive value.
 	position.y *= -1;
 	position += _get_screens_origin();
-	position /= screen_get_max_scale();
 
 	// Remove titlebar / window border size.
 	const NSRect contentRect = [wd.window_view frame];
@@ -2514,8 +2509,7 @@ void DisplayServerMacOS::window_set_max_size(const Size2i p_size, WindowID p_win
 	wd.max_size = p_size;
 
 	if ((wd.max_size != Size2i()) && !wd.fullscreen) {
-		Size2i size = wd.max_size / screen_get_max_scale();
-		[wd.window_object setContentMaxSize:NSMakeSize(size.x, size.y)];
+		[wd.window_object setContentMaxSize:NSMakeSize(wd.max_size.x, wd.max_size.y)];
 	} else {
 		[wd.window_object setContentMaxSize:NSMakeSize(FLT_MAX, FLT_MAX)];
 	}
@@ -2542,8 +2536,7 @@ void DisplayServerMacOS::window_set_min_size(const Size2i p_size, WindowID p_win
 	wd.min_size = p_size;
 
 	if ((wd.min_size != Size2i()) && !wd.fullscreen) {
-		Size2i size = wd.min_size / screen_get_max_scale();
-		[wd.window_object setContentMinSize:NSMakeSize(size.x, size.y)];
+		[wd.window_object setContentMinSize:NSMakeSize(wd.min_size.x, wd.min_size.y)];
 	} else {
 		[wd.window_object setContentMinSize:NSMakeSize(0, 0)];
 	}
@@ -2568,14 +2561,12 @@ void DisplayServerMacOS::window_set_size(const Size2i p_size, WindowID p_window)
 		return;
 	}
 
-	Size2i size = p_size / screen_get_max_scale();
-
 	NSPoint top_left;
 	NSRect old_frame = [wd.window_object frame];
 	top_left.x = old_frame.origin.x;
 	top_left.y = NSMaxY(old_frame);
 
-	NSRect new_frame = NSMakeRect(0, 0, size.x, size.y);
+	NSRect new_frame = NSMakeRect(0, 0, p_size.x, p_size.y);
 	new_frame = [wd.window_object frameRectForContentRect:new_frame];
 
 	new_frame.origin.x = top_left.x;
@@ -2600,7 +2591,7 @@ Size2i DisplayServerMacOS::window_get_size_with_decorations(WindowID p_window) c
 	ERR_FAIL_COND_V(!windows.has(p_window), Size2i());
 	const WindowData &wd = windows[p_window];
 	NSRect frame = [wd.window_object frame];
-	return Size2i(frame.size.width, frame.size.height) * screen_get_max_scale();
+	return Size2i(frame.size.width, frame.size.height);
 }
 
 void DisplayServerMacOS::window_set_mode(WindowMode p_mode, WindowID p_window) {
@@ -2629,12 +2620,10 @@ void DisplayServerMacOS::window_set_mode(WindowMode p_mode, WindowID p_window) {
 				[wd.window_object setStyleMask:[wd.window_object styleMask] & ~NSWindowStyleMaskResizable];
 			}
 			if (wd.min_size != Size2i()) {
-				Size2i size = wd.min_size / screen_get_max_scale();
-				[wd.window_object setContentMinSize:NSMakeSize(size.x, size.y)];
+				[wd.window_object setContentMinSize:NSMakeSize(wd.min_size.x, wd.min_size.y)];
 			}
 			if (wd.max_size != Size2i()) {
-				Size2i size = wd.max_size / screen_get_max_scale();
-				[wd.window_object setContentMaxSize:NSMakeSize(size.x, size.y)];
+				[wd.window_object setContentMaxSize:NSMakeSize(wd.max_size.x, wd.max_size.y)];
 			}
 			[wd.window_object toggleFullScreen:nil];
 
@@ -2737,8 +2726,7 @@ void DisplayServerMacOS::window_set_window_buttons_offset(const Vector2i &p_offs
 
 	ERR_FAIL_COND(!windows.has(p_window));
 	WindowData &wd = windows[p_window];
-	float scale = screen_get_max_scale();
-	wd.wb_offset = p_offset / scale;
+	wd.wb_offset = p_offset;
 	wd.wb_offset.x = MAX(wd.wb_offset.x, 12);
 	wd.wb_offset.y = MAX(wd.wb_offset.y, 12);
 	if (wd.window_button_view) {
@@ -2756,14 +2744,13 @@ Vector3i DisplayServerMacOS::window_get_safe_title_margins(WindowID p_window) co
 		return Vector3i();
 	}
 
-	float scale = screen_get_max_scale();
 	float max_x = [wd.window_button_view getOffset].x + [wd.window_button_view frame].size.width;
 	float max_y = [wd.window_button_view getOffset].y + [wd.window_button_view frame].size.height;
 
 	if ([wd.window_object windowTitlebarLayoutDirection] == NSUserInterfaceLayoutDirectionRightToLeft) {
-		return Vector3i(0, max_x * scale, max_y * scale);
+		return Vector3i(0, max_x, max_y);
 	} else {
-		return Vector3i(max_x * scale, 0, max_y * scale);
+		return Vector3i(max_x, 0, max_y);
 	}
 }
 
@@ -2993,7 +2980,6 @@ DisplayServer::WindowID DisplayServerMacOS::get_window_at_screen_position(const 
 	Point2i position = p_position;
 	position.y *= -1;
 	position += _get_screens_origin();
-	position /= screen_get_max_scale();
 
 	NSInteger wnum = [NSWindow windowNumberAtPoint:NSMakePoint(position.x, position.y) belowWindowWithWindowNumber:0 /*topmost*/];
 	for (const KeyValue<WindowID, WindowData> &E : windows) {
@@ -3678,11 +3664,6 @@ DisplayServerMacOS::DisplayServerMacOS(const String &p_rendering_driver, WindowM
 	ERR_FAIL_COND(!event_source);
 
 	CGEventSourceSetLocalEventsSuppressionInterval(event_source, 0.0);
-
-	int screen_count = get_screen_count();
-	for (int i = 0; i < screen_count; i++) {
-		display_max_scale = fmax(display_max_scale, screen_get_scale(i));
-	}
 
 	// Register to be notified on keyboard layout changes.
 	CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),

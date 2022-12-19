@@ -167,7 +167,6 @@ private:
 
 	WindowID last_focused_window = INVALID_WINDOW_ID;
 	WindowID window_id_counter = MAIN_WINDOW_ID;
-	float display_max_scale = 1.f;
 	Point2i origin;
 	bool displays_arrangement_dirty = true;
 	bool is_resizing = false;

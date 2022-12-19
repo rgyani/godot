@@ -1099,6 +1099,27 @@ Rect2i DisplayServerX11::screen_get_usable_rect(int p_screen) const {
 	return rect;
 }
 
+float DisplayServerX11::screen_get_scale(int p_screen) const {
+	_THREAD_SAFE_METHOD_
+
+	if (OS::get_singleton()->is_hidpi_allowed()) {
+		return (float)screen_get_dpi(p_screen) / 96.0f;
+	}
+	return 1.0f;
+}
+
+float DisplayServerX11::screen_get_max_scale() const {
+	_THREAD_SAFE_METHOD_
+
+	float max_scale = 1.0f;
+	if (OS::get_singleton()->is_hidpi_allowed()) {
+		for (int i = 0; i < get_screen_count(); i++) {
+			max_scale = fmax(max_scale, (float)screen_get_dpi(p_screen) / 96.0f);
+		}
+	}
+	return max_scale;
+}
+
 int DisplayServerX11::screen_get_dpi(int p_screen) const {
 	_THREAD_SAFE_METHOD_
 
