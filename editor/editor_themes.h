@@ -34,6 +34,39 @@
 #include "scene/resources/texture.h"
 #include "scene/resources/theme.h"
 
+class EditorThemePresets {
+public:
+	struct EditorThemePreset {
+		Color base_light;
+		Color base_dark;
+		Color accent_light;
+		Color accent_dark;
+		bool extra_borders = false;
+		float contrast_light = -0.08; // A negative contrast rate looks better for light themes, since it better follows the natural order of UI "elevation".
+		float contrast_dark = 0.3;
+
+		EditorThemePreset() {}
+		EditorThemePreset(const Color &p_base_light, const Color &p_base_dark, const Color &p_accent_light, const Color &p_accent_dark, bool p_extra_borders = false, float p_contrast_light = -0.08, float p_contrast_dark = 0.3) {
+			base_light = p_base_light;
+			base_dark = p_base_dark;
+			accent_light = p_accent_light;
+			accent_dark = p_accent_dark;
+			extra_borders = p_extra_borders;
+			contrast_light = p_contrast_light;
+			contrast_dark = p_contrast_dark;
+		}
+	};
+
+private:
+	static HashMap<String, EditorThemePreset> presets;
+	static void init_presets();
+
+public:
+	static Vector<String> get_editor_theme_preset_list();
+	static bool has_preset(const String &p_name);
+	static const EditorThemePreset &get_preset(const String &p_name);
+};
+
 // The default icon theme is designed to be used for a dark theme. This map stores
 // Color values to convert to other colors for better readability on a light theme.
 class EditorColorMap {

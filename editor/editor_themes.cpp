@@ -42,6 +42,8 @@
 #include "modules/svg/image_loader_svg.h"
 #endif
 
+HashMap<String, EditorThemePresets::EditorThemePreset> EditorThemePresets::presets;
+
 HashMap<Color, Color> EditorColorMap::color_conversion_map;
 HashSet<StringName> EditorColorMap::color_conversion_exceptions;
 
@@ -384,6 +386,39 @@ void editor_register_and_generate_icons(Ref<Theme> p_theme, bool p_dark_theme, f
 	}
 }
 
+void EditorThemePresets::init_presets() {
+	if (presets.is_empty()) {
+		// Name, Base Color (Light), Base Color (Dark), Accent Color (Light), Accent Color (Dark), Extra Borders, Contrast (Light), Contrast (Dark)
+		presets["Default"] = EditorThemePreset(Color(0.9, 0.9, 0.9), Color(0.21, 0.24, 0.29), Color(0.18, 0.50, 1.00), Color(0.44, 0.73, 0.98));
+		presets["Breeze"] = EditorThemePreset(Color(0.93, 0.93, 0.93), Color(0.24, 0.26, 0.28), Color(0.26, 0.76, 1.00), Color(0.26, 0.76, 1.00));
+		presets["Godot 2"] = EditorThemePreset(Color(0.24, 0.23, 0.27), Color(0.24, 0.23, 0.27), Color(0.53, 0.67, 0.89), Color(0.53, 0.67, 0.89));
+		presets["Gray"] = EditorThemePreset(Color(0.24, 0.24, 0.24), Color(0.24, 0.24, 0.24), Color(0.44, 0.73, 0.98), Color(0.44, 0.73, 0.98));
+		presets["Solarized"] = EditorThemePreset(Color(0.89, 0.86, 0.79), Color(0.04, 0.23, 0.27), Color(0.15, 0.55, 0.82), Color(0.15, 0.55, 0.82));
+		presets["Black (OLED)"] = EditorThemePreset(Color(0, 0, 0), Color(0, 0, 0), Color(0.45, 0.75, 1.0), Color(0.45, 0.75, 1.0), true, 0.0, 0.0);
+	}
+}
+
+Vector<String> EditorThemePresets::get_editor_theme_preset_list() {
+	Vector<String> names;
+	init_presets();
+	for (const KeyValue<String, EditorThemePreset> &E : presets) {
+		names.push_back(E.key);
+	}
+	names.push_back("Custom");
+
+	return names;
+}
+
+bool EditorThemePresets::has_preset(const String &p_name) {
+	init_presets();
+	return presets.has(p_name);
+}
+
+const EditorThemePresets::EditorThemePreset &EditorThemePresets::get_preset(const String &p_name) {
+	init_presets();
+	return presets[p_name];
+}
+
 Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 	Ref<Theme> theme = Ref<Theme>(memnew(Theme));
 
@@ -400,6 +435,7 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 	float relationship_line_opacity = EDITOR_GET("interface/theme/relationship_line_opacity");
 
 	String preset = EDITOR_GET("interface/theme/preset");
+	String preset_sub = EDITOR_GET("interface/theme/preset_color_scheme");
 
 	int border_size = EDITOR_GET("interface/theme/border_size");
 	int corner_radius = EDITOR_GET("interface/theme/corner_radius");
@@ -408,49 +444,39 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 	Color preset_base_color;
 	float preset_contrast = 0;
 	bool preset_draw_extra_borders = false;
-
 	const float default_contrast = 0.3;
-
-	// Please use alphabetical order if you're adding a new theme here
-	// (after "Custom")
 
 	if (preset == "Custom") {
 		accent_color = EDITOR_GET("interface/theme/accent_color");
 		base_color = EDITOR_GET("interface/theme/base_color");
 		contrast = EDITOR_GET("interface/theme/contrast");
-	} else if (preset == "Breeze Dark") {
-		preset_accent_color = Color(0.26, 0.76, 1.00);
-		preset_base_color = Color(0.24, 0.26, 0.28);
-		preset_contrast = default_contrast;
-	} else if (preset == "Godot 2") {
-		preset_accent_color = Color(0.53, 0.67, 0.89);
-		preset_base_color = Color(0.24, 0.23, 0.27);
-		preset_contrast = default_contrast;
-	} else if (preset == "Gray") {
-		preset_accent_color = Color(0.44, 0.73, 0.98);
-		preset_base_color = Color(0.24, 0.24, 0.24);
-		preset_contrast = default_contrast;
-	} else if (preset == "Light") {
-		preset_accent_color = Color(0.18, 0.50, 1.00);
-		preset_base_color = Color(0.9, 0.9, 0.9);
-		// A negative contrast rate looks better for light themes, since it better follows the natural order of UI "elevation".
-		preset_contrast = -0.08;
-	} else if (preset == "Solarized (Dark)") {
-		preset_accent_color = Color(0.15, 0.55, 0.82);
-		preset_base_color = Color(0.04, 0.23, 0.27);
-		preset_contrast = default_contrast;
-	} else if (preset == "Solarized (Light)") {
-		preset_accent_color = Color(0.15, 0.55, 0.82);
-		preset_base_color = Color(0.89, 0.86, 0.79);
-		// A negative contrast rate looks better for light themes, since it better follows the natural order of UI "elevation".
-		preset_contrast = -0.08;
-	} else if (preset == "Black (OLED)") {
-		preset_accent_color = Color(0.45, 0.75, 1.0);
-		preset_base_color = Color(0, 0, 0);
-		// The contrast rate value is irrelevant on a fully black theme.
-		preset_contrast = 0.0;
-		preset_draw_extra_borders = true;
-	} else { // Default
+	} else if (EditorThemePresets::has_preset(preset)) {
+		const EditorThemePresets::EditorThemePreset &theme_preset = EditorThemePresets::get_preset(preset);
+		if (preset_sub == "Auto") {
+			bool dark = true;
+			preset_accent_color = Color(0, 0, 0, 0);
+			if (DisplayServer::get_singleton()->is_dark_mode_supported()) {
+				dark = DisplayServer::get_singleton()->is_dark_mode();
+				preset_accent_color = DisplayServer::get_singleton()->get_accent_color();
+			}
+			if (Math::is_zero_approx(preset_accent_color.a)) {
+				preset_accent_color = dark ? theme_preset.accent_dark : theme_preset.accent_light;
+			}
+			preset_base_color = dark ? theme_preset.base_dark : theme_preset.base_light;
+			preset_contrast = dark ? theme_preset.contrast_dark : theme_preset.contrast_light;
+			preset_draw_extra_borders = theme_preset.extra_borders;
+		} else if (preset_sub == "Light") {
+			preset_accent_color = theme_preset.accent_light;
+			preset_base_color = theme_preset.base_light;
+			preset_contrast = theme_preset.contrast_light;
+			preset_draw_extra_borders = theme_preset.extra_borders;
+		} else { // "Dark" mode (default).
+			preset_accent_color = theme_preset.accent_dark;
+			preset_base_color = theme_preset.base_dark;
+			preset_contrast = theme_preset.contrast_dark;
+			preset_draw_extra_borders = theme_preset.extra_borders;
+		}
+	} else {
 		preset_accent_color = Color(0.44, 0.73, 0.98);
 		preset_base_color = Color(0.21, 0.24, 0.29);
 		preset_contrast = default_contrast;

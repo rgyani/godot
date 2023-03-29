@@ -47,6 +47,7 @@
 #include "core/version.h"
 #include "editor/editor_node.h"
 #include "editor/editor_paths.h"
+#include "editor/editor_themes.h"
 #include "editor/editor_translation.h"
 #include "scene/main/node.h"
 #include "scene/main/scene_tree.h"
@@ -449,7 +450,16 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	EDITOR_SETTING(Variant::BOOL, PROPERTY_HINT_NONE, "interface/inspector/show_low_level_opentype_features", false, "")
 
 	// Theme
-	EDITOR_SETTING(Variant::STRING, PROPERTY_HINT_ENUM, "interface/theme/preset", "Default", "Default,Breeze Dark,Godot 2,Gray,Light,Solarized (Dark),Solarized (Light),Black (OLED),Custom")
+	Vector<String> editor_theme_presets = EditorThemePresets::get_editor_theme_preset_list();
+	String editor_theme_presets_str;
+	for (const String &E : editor_theme_presets) {
+		if (!editor_theme_presets_str.is_empty()) {
+			editor_theme_presets_str += ",";
+		}
+		editor_theme_presets_str += E;
+	}
+	EDITOR_SETTING(Variant::STRING, PROPERTY_HINT_ENUM, "interface/theme/preset", "Default", editor_theme_presets_str);
+	EDITOR_SETTING(Variant::STRING, PROPERTY_HINT_ENUM, "interface/theme/preset_color_scheme", "Dark", "Auto,Dark,Light");
 	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_ENUM, "interface/theme/icon_and_font_color", 0, "Auto,Dark,Light")
 	EDITOR_SETTING(Variant::COLOR, PROPERTY_HINT_NONE, "interface/theme/base_color", Color(0.2, 0.23, 0.31), "")
 	EDITOR_SETTING(Variant::COLOR, PROPERTY_HINT_NONE, "interface/theme/accent_color", Color(0.41, 0.61, 0.91), "")
