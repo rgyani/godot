@@ -134,6 +134,12 @@ void SceneTreeEditor::_cell_button_pressed(Object *p_item, int p_column, int p_i
 		undo_redo->commit_action();
 	} else if (p_id == BUTTON_WARNING) {
 		String config_err = n->get_configuration_warnings_as_string();
+		if (accessibility_warnings) {
+			if (!config_err.is_empty()) {
+				config_err += "\n\n";
+			}
+			config_err += n->get_accessibility_configuration_warnings_as_string();
+		}
 		if (config_err.is_empty()) {
 			return;
 		}
@@ -284,8 +290,17 @@ void SceneTreeEditor::_add_nodes(Node *p_node, TreeItem *p_parent) {
 	if (can_rename) { //should be can edit..
 
 		String conf_warning = p_node->get_configuration_warnings_as_string();
+		if (accessibility_warnings) {
+			if (!conf_warning.is_empty()) {
+				conf_warning += "\n\n";
+			}
+			conf_warning += p_node->get_accessibility_configuration_warnings_as_string();
+		}
 		if (!conf_warning.is_empty()) {
-			const int num_warnings = p_node->get_configuration_warnings().size();
+			int num_warnings = p_node->get_configuration_warnings().size();
+			if (accessibility_warnings) {
+				num_warnings += p_node->get_accessibility_configuration_warnings().size();
+			}
 			String warning_icon;
 			if (num_warnings == 1) {
 				warning_icon = SNAME("NodeWarning");
@@ -1416,6 +1431,13 @@ void SceneTreeEditor::set_auto_expand_selected(bool p_auto, bool p_update_settin
 		EditorSettings::get_singleton()->set("docks/scene_tree/auto_expand_to_selected", p_auto);
 	}
 	auto_expand_selected = p_auto;
+}
+
+void SceneTreeEditor::set_accessibility_warnings(bool p_enable, bool p_update_settings) {
+	if (p_update_settings) {
+		EditorSettings::get_singleton()->set("docks/scene_tree/accessibility_warnings", p_enable);
+	}
+	accessibility_warnings = p_enable;
 }
 
 void SceneTreeEditor::set_connect_to_script_mode(bool p_enable) {

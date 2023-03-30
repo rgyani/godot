@@ -35,6 +35,7 @@ void TextParagraph::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_direction", "direction"), &TextParagraph::set_direction);
 	ClassDB::bind_method(D_METHOD("get_direction"), &TextParagraph::get_direction);
+	ClassDB::bind_method(D_METHOD("get_inferred_direction"), &TextParagraph::get_inferred_direction);
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "direction", PROPERTY_HINT_ENUM, "Auto,Light-to-right,Right-to-left"), "set_direction", "get_direction");
 
@@ -100,6 +101,8 @@ void TextParagraph::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_rid"), &TextParagraph::get_rid);
 	ClassDB::bind_method(D_METHOD("get_line_rid", "line"), &TextParagraph::get_line_rid);
 	ClassDB::bind_method(D_METHOD("get_dropcap_rid"), &TextParagraph::get_dropcap_rid);
+
+	ClassDB::bind_method(D_METHOD("get_range"), &TextParagraph::get_range);
 
 	ClassDB::bind_method(D_METHOD("get_line_count"), &TextParagraph::get_line_count);
 
@@ -363,6 +366,13 @@ TextServer::Direction TextParagraph::get_direction() const {
 	return TS->shaped_text_get_direction(rid);
 }
 
+TextServer::Direction TextParagraph::get_inferred_direction() const {
+	_THREAD_SAFE_METHOD_
+
+	const_cast<TextParagraph *>(this)->_shape_lines();
+	return TS->shaped_text_get_inferred_direction(rid);
+}
+
 void TextParagraph::set_custom_punctuation(const String &p_punct) {
 	_THREAD_SAFE_METHOD_
 
@@ -539,6 +549,12 @@ Size2 TextParagraph::get_size() const {
 		}
 	}
 	return size;
+}
+
+Vector2i TextParagraph::get_range() const {
+	_THREAD_SAFE_METHOD_
+
+	return TS->shaped_text_get_range(rid);
 }
 
 int TextParagraph::get_line_count() const {

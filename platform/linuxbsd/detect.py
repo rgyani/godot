@@ -423,6 +423,19 @@ def configure(env: "Environment"):
             env.ParseConfig("pkg-config xi --cflags --libs")
         env.Append(CPPDEFINES=["X11_ENABLED"])
 
+    if env["ACCESSKIT_SDK_PATH"] != "":
+        env.Prepend(CPPPATH=[env["ACCESSKIT_SDK_PATH"] + "/include"])
+        if env["arch"] == "arm64":
+            env.Append(LIBPATH=[env["ACCESSKIT_SDK_PATH"] + "/lib/linux/arm64/static/"])
+        elif env["arch"] == "rv64":
+            env.Append(LIBPATH=[env["ACCESSKIT_SDK_PATH"] + "/lib/linux/riscv64gc/static/"])
+        elif env["arch"] == "x86_64":
+            env.Append(LIBPATH=[env["ACCESSKIT_SDK_PATH"] + "/lib/linux/x86_64/static/"])
+        elif env["arch"] == "x86_32":
+            env.Append(LIBPATH=[env["ACCESSKIT_SDK_PATH"] + "/lib/linux/x86/static/"])
+        env.Append(CPPDEFINES=["ACCESSKIT_ENABLED"])
+        env.Append(LIBS=["accesskit"])
+
     if env["vulkan"]:
         env.Append(CPPDEFINES=["VULKAN_ENABLED"])
         if not env["use_volk"]:

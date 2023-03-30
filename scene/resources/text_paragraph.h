@@ -76,6 +76,7 @@ public:
 
 	void set_direction(TextServer::Direction p_direction);
 	TextServer::Direction get_direction() const;
+	TextServer::Direction get_inferred_direction() const;
 
 	void set_orientation(TextServer::Orientation p_orientation);
 	TextServer::Orientation get_orientation() const;
@@ -121,6 +122,8 @@ public:
 	Size2 get_non_wrapped_size() const;
 
 	Size2 get_size() const;
+
+	Vector2i get_range() const;
 
 	int get_line_count() const;
 

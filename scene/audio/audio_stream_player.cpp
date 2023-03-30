@@ -36,6 +36,13 @@
 
 void AudioStreamPlayer::_notification(int p_what) {
 	switch (p_what) {
+		case NOTIFICATION_ACCESSIBILITY_UPDATE: {
+			RID ae = get_accessibility_element();
+			ERR_FAIL_COND(ae.is_null());
+
+			DisplayServer::get_singleton()->accessibility_update_set_role(ae, DisplayServer::AccessibilityRole::ROLE_AUDIO);
+		} break;
+
 		case NOTIFICATION_ENTER_TREE: {
 			if (autoplay && !Engine::get_singleton()->is_editor_hint()) {
 				play();

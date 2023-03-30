@@ -426,6 +426,7 @@ private:
 	String _gui_get_tooltip(Control *p_control, const Vector2 &p_pos, Control **r_tooltip_owner = nullptr);
 	void _gui_cancel_tooltip();
 	void _gui_show_tooltip();
+	void _gui_show_tooltip_at(const Point2i &p_pos);
 
 	void _gui_remove_control(Control *p_control);
 	void _gui_hide_control(Control *p_control);
@@ -501,6 +502,9 @@ public:
 	Camera2D *get_camera_2d() const;
 	void set_as_audio_listener_2d(bool p_enable);
 	bool is_audio_listener_2d() const;
+
+	void cancel_tooltip();
+	void show_tooltip(Control *p_control);
 
 	void update_canvas_items();
 

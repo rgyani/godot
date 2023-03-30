@@ -1119,12 +1119,15 @@ FileDialog::FileDialog() {
 
 	dir_prev = memnew(Button);
 	dir_prev->set_theme_type_variation("FlatButton");
+	dir_prev->set_accessibility_name(RTR("Go to previous folder."));
 	dir_prev->set_tooltip_text(RTR("Go to previous folder."));
 	dir_next = memnew(Button);
 	dir_next->set_theme_type_variation("FlatButton");
+	dir_next->set_accessibility_name(RTR("Go to next folder."));
 	dir_next->set_tooltip_text(RTR("Go to next folder."));
 	dir_up = memnew(Button);
 	dir_up->set_theme_type_variation("FlatButton");
+	dir_up->set_accessibility_name(RTR("Go to parent folder."));
 	dir_up->set_tooltip_text(RTR("Go to parent folder."));
 	hbc->add_child(dir_prev);
 	hbc->add_child(dir_next);
@@ -1143,12 +1146,14 @@ FileDialog::FileDialog() {
 	hbc->add_child(drives);
 
 	dir = memnew(LineEdit);
+	dir->set_accessibility_name(RTR("Path:"));
 	dir->set_structured_text_bidi_override(TextServer::STRUCTURED_TEXT_FILE);
 	hbc->add_child(dir);
 	dir->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 
 	refresh = memnew(Button);
 	refresh->set_theme_type_variation("FlatButton");
+	refresh->set_accessibility_name(RTR("Refresh files."));
 	refresh->set_tooltip_text(RTR("Refresh files."));
 	refresh->connect("pressed", callable_mp(this, &FileDialog::update_file_list));
 	hbc->add_child(refresh);
@@ -1157,6 +1162,7 @@ FileDialog::FileDialog() {
 	show_hidden->set_theme_type_variation("FlatButton");
 	show_hidden->set_toggle_mode(true);
 	show_hidden->set_pressed(is_showing_hidden_files());
+	show_hidden->set_accessibility_name(RTR("Toggle the visibility of hidden files."));
 	show_hidden->set_tooltip_text(RTR("Toggle the visibility of hidden files."));
 	show_hidden->connect("toggled", callable_mp(this, &FileDialog::set_show_hidden_files));
 	hbc->add_child(show_hidden);
@@ -1171,6 +1177,7 @@ FileDialog::FileDialog() {
 	vbox->add_child(hbc);
 
 	tree = memnew(Tree);
+	tree->set_accessibility_name(RTR("Directories & Files:"));
 	tree->set_hide_root(true);
 	vbox->add_margin_child(RTR("Directories & Files:"), tree, true);
 
@@ -1184,6 +1191,7 @@ FileDialog::FileDialog() {
 	file_box = memnew(HBoxContainer);
 	file_box->add_child(memnew(Label(RTR("File:"))));
 	file = memnew(LineEdit);
+	file->set_accessibility_name(RTR("File:"));
 	file->set_structured_text_bidi_override(TextServer::STRUCTURED_TEXT_FILE);
 	file->set_stretch_ratio(4);
 	file->set_h_size_flags(Control::SIZE_EXPAND_FILL);

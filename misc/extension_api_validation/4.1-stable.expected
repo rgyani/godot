@@ -190,13 +190,6 @@ GH-79965
 Validate extension JSON: JSON file: Field was added in a way that breaks compatibility 'classes/PopupMenu/methods/clear': arguments
 
 
-GH-80410
---------
-Validate extension JSON: Error: Field 'classes/RichTextLabel/methods/add_image/arguments': size changed value in new API, from 6 to 10.
-
-Added optional argument. Compatibility method registered.
-
-
 GH-82403
 --------
 Validate extension JSON: Error: Field 'native_structures/PhysicsServer3DExtensionRayResult': format changed value in new API, from "Vector3 position;Vector3 normal;RID rid;ObjectID collider_id;Object *collider;int shape" to "Vector3 position;Vector3 normal;RID rid;ObjectID collider_id;Object *collider;int shape;int face_index".
@@ -305,3 +298,12 @@ Validate extension JSON: Error: Field 'classes/LineEdit/properties/right_icon': 
 Validate extension JSON: Error: Field 'classes/Sprite3D/properties/texture': type changed value in new API, from "Texture" to "Texture2D".
 
 Changed the hint types of some nodes' properties from Texture to Texture2D. No adjustments should be necessary.
+
+
+GH-76829
+--------
+Validate extension JSON: Error: Field 'classes/RichTextLabel/methods/add_image/arguments': size changed value in new API, from 6 to 11.
+Validate extension JSON: Error: Field 'classes/RichTextLabel/methods/push_table/arguments': size changed value in new API, from 3 to 4.
+Validate extension JSON: Error: Field 'classes/TreeItem/methods/add_button/arguments': size changed value in new API, from 5 to 6.
+
+Added optional arguments. Compatibility methods registered.

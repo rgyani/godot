@@ -50,6 +50,13 @@ Size2 ProgressBar::get_minimum_size() const {
 
 void ProgressBar::_notification(int p_what) {
 	switch (p_what) {
+		case NOTIFICATION_ACCESSIBILITY_UPDATE: {
+			RID ae = get_accessibility_element();
+			ERR_FAIL_COND(ae.is_null());
+
+			DisplayServer::get_singleton()->accessibility_update_set_role(ae, DisplayServer::AccessibilityRole::ROLE_PROGRESS_INDICATOR);
+		} break;
+
 		case NOTIFICATION_DRAW: {
 			draw_style_box(theme_cache.background_style, Rect2(Point2(), get_size()));
 

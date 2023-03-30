@@ -84,6 +84,12 @@ public:
 	// 1: Prefer dark appearance.
 	// 2: Prefer light appearance.
 	uint32_t get_appearance_color_scheme();
+
+	// Retrieve high-contrast setting.
+	// -1: Unknown.
+	// 0: Disabled.
+	// 1: Enabled.
+	uint32_t get_high_contrast();
 };
 
 #endif // DBUS_ENABLED

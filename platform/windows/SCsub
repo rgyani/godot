@@ -28,8 +28,15 @@ common_win_wrap = [
 res_file = "godot_res.rc"
 res_target = "godot_res" + env["OBJSUFFIX"]
 res_obj = env.RES(res_target, res_file)
+other_win = [res_obj]
 
-prog = env.add_program("#bin/godot", common_win + res_obj, PROGSUFFIX=env["PROGSUFFIX"])
+if env["ACCESSKIT_SDK_PATH"] != "" and not env.msvc:
+    def_file = "uiautomationcore." + env["arch"] + ".def"
+    def_target = "libuiautomationcore." + env["arch"] + ".a"
+    def_obj = env.DEF(def_target, def_file)
+    other_win += def_obj
+
+prog = env.add_program("#bin/godot", common_win + other_win, PROGSUFFIX=env["PROGSUFFIX"])
 
 # Build console wrapper app.
 if env["windows_subsystem"] == "gui":

@@ -134,6 +134,7 @@ void Label::_shape() {
 		dirty = false;
 		font_dirty = false;
 		lines_dirty = true;
+		queue_accessibility_update();
 	}
 
 	if (lines_dirty) {
@@ -356,6 +357,15 @@ PackedStringArray Label::get_configuration_warnings() const {
 
 void Label::_notification(int p_what) {
 	switch (p_what) {
+		case NOTIFICATION_ACCESSIBILITY_UPDATE: {
+			RID ae = get_accessibility_element();
+			ERR_FAIL_COND(ae.is_null());
+
+			DisplayServer::get_singleton()->accessibility_update_set_role(ae, DisplayServer::AccessibilityRole::ROLE_STATIC_TEXT);
+			DisplayServer::get_singleton()->accessibility_update_set_value(ae, xl_text);
+			DisplayServer::get_singleton()->accessibility_update_set_text_align(ae, horizontal_alignment);
+		} break;
+
 		case NOTIFICATION_TRANSLATION_CHANGED: {
 			String new_text = atr(text);
 			if (new_text == xl_text) {
@@ -402,7 +412,7 @@ void Label::_notification(int p_what) {
 
 			Size2 string_size;
 			Size2 size = get_size();
-			Ref<StyleBox> style = theme_cache.normal_style;
+			Ref<StyleBox> style = has_focus() ? theme_cache.focus_style : theme_cache.normal_style;
 			Ref<Font> font = (has_settings && settings->get_font().is_valid()) ? settings->get_font() : theme_cache.font;
 			Color font_color = has_settings ? settings->get_font_color() : theme_cache.font_color;
 			Color font_shadow_color = has_settings ? settings->get_shadow_color() : theme_cache.font_shadow_color;
@@ -718,7 +728,7 @@ void Label::set_horizontal_alignment(HorizontalAlignment p_alignment) {
 		lines_dirty = true; // Reshape lines.
 	}
 	horizontal_alignment = p_alignment;
-
+	queue_accessibility_update();
 	queue_redraw();
 }
 
@@ -1040,6 +1050,7 @@ void Label::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "structured_text_bidi_override_options"), "set_structured_text_bidi_override_options", "get_structured_text_bidi_override_options");
 
 	BIND_THEME_ITEM_CUSTOM(Theme::DATA_TYPE_STYLEBOX, Label, normal_style, "normal");
+	BIND_THEME_ITEM_CUSTOM(Theme::DATA_TYPE_STYLEBOX, Label, focus_style, "focus");
 	BIND_THEME_ITEM(Theme::DATA_TYPE_CONSTANT, Label, line_spacing);
 
 	BIND_THEME_ITEM(Theme::DATA_TYPE_FONT, Label, font);
@@ -1056,6 +1067,7 @@ void Label::_bind_methods() {
 Label::Label(const String &p_text) {
 	text_rid = TS->create_shaped_text();
 
+	set_focus_mode(FOCUS_ACCESSIBILITY);
 	set_mouse_filter(MOUSE_FILTER_IGNORE);
 	set_text(p_text);
 	set_v_size_flags(SIZE_SHRINK_CENTER);

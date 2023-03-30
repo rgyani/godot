@@ -1903,6 +1903,7 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 
 	// Label
 	theme->set_stylebox("normal", "Label", style_empty);
+	theme->set_stylebox("focus", "Label", style_widget_focus);
 	theme->set_color("font_color", "Label", font_color);
 	theme->set_color("font_shadow_color", "Label", Color(0, 0, 0, 0));
 	theme->set_color("font_outline_color", "Label", font_outline_color);

@@ -57,6 +57,10 @@
 #include "servers/rendering/renderer_rd/renderer_compositor_rd.h"
 #endif
 
+#if defined(ACCESSKIT_ENABLED)
+#include "drivers/accesskit/accessibility_driver_accesskit.h"
+#endif
+
 #import <Carbon/Carbon.h>
 #import <Cocoa/Cocoa.h>
 #import <IOKit/IOCFPlugIn.h>
@@ -112,14 +116,15 @@ NSMenu *DisplayServerMacOS::_get_menu_root(const String &p_menu_root) {
 }
 
 DisplayServerMacOS::WindowID DisplayServerMacOS::_create_window(WindowMode p_mode, VSyncMode p_vsync_mode, const Rect2i &p_rect) {
-	WindowID id;
 	const float scale = screen_get_max_scale();
+
+	WindowID id = window_id_counter;
 	{
-		WindowData wd;
+		WindowData &wd = windows[id];
 
 		wd.window_delegate = [[GodotWindowDelegate alloc] init];
 		ERR_FAIL_NULL_V_MSG(wd.window_delegate, INVALID_WINDOW_ID, "Can't create a window delegate");
-		[wd.window_delegate setWindowID:window_id_counter];
+		[wd.window_delegate setWindowID:id];
 
 		int rq_screen = get_screen_from_rect(p_rect);
 		if (rq_screen < 0) {
@@ -144,12 +149,18 @@ DisplayServerMacOS::WindowID DisplayServerMacOS::_create_window(WindowMode p_mod
 						  styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable
 							backing:NSBackingStoreBuffered
 							  defer:NO];
-		ERR_FAIL_NULL_V_MSG(wd.window_object, INVALID_WINDOW_ID, "Can't create a window");
-		[wd.window_object setWindowID:window_id_counter];
+		if (wd.window_object == nil) {
+			windows.erase(id);
+			ERR_FAIL_V_MSG(INVALID_WINDOW_ID, "Can't create a window");
+		}
+		[wd.window_object setWindowID:id];
 
 		wd.window_view = [[GodotContentView alloc] init];
-		ERR_FAIL_NULL_V_MSG(wd.window_view, INVALID_WINDOW_ID, "Can't create a window view");
-		[wd.window_view setWindowID:window_id_counter];
+		if (wd.window_view == nil) {
+			windows.erase(id);
+			ERR_FAIL_V_MSG(INVALID_WINDOW_ID, "Can't create a window view");
+		}
+		[wd.window_view setWindowID:id];
 		[wd.window_view setWantsLayer:TRUE];
 
 		[wd.window_object setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
@@ -158,6 +169,18 @@ DisplayServerMacOS::WindowID DisplayServerMacOS::_create_window(WindowMode p_mod
 		[wd.window_object setAcceptsMouseMovedEvents:YES];
 		[wd.window_object setRestorable:NO];
 		[wd.window_object setColorSpace:[NSColorSpace sRGBColorSpace]];
+
+#ifdef ACCESSKIT_ENABLED
+		if (accessibility_driver) {
+			if (!accessibility_driver->window_create(id, (__bridge void *)wd.window_view)) {
+				if (OS::get_singleton()->is_stdout_verbose()) {
+					ERR_PRINT("Can't create an accessibility adapter for window, accessibility support disabled!");
+				}
+				memdelete(accessibility_driver);
+				accessibility_driver = nullptr;
+			}
+		}
+#endif
 
 		if ([wd.window_object respondsToSelector:@selector(setTabbingMode:)]) {
 			[wd.window_object setTabbingMode:NSWindowTabbingModeDisallowed];
@@ -181,21 +204,43 @@ DisplayServerMacOS::WindowID DisplayServerMacOS::_create_window(WindowMode p_mod
 
 #if defined(VULKAN_ENABLED)
 		if (context_vulkan) {
-			Error err = context_vulkan->window_create(window_id_counter, p_vsync_mode, wd.window_view, p_rect.size.width, p_rect.size.height);
-			ERR_FAIL_COND_V_MSG(err != OK, INVALID_WINDOW_ID, "Can't create a Vulkan context");
+			Error err = context_vulkan->window_create(id, p_vsync_mode, wd.window_view, p_rect.size.width, p_rect.size.height);
+			if (err != OK) {
+#ifdef ACCESSKIT_ENABLED
+				if (accessibility_driver) {
+					accessibility_driver->window_destroy(id);
+				}
+#endif
+				windows.erase(id);
+				ERR_FAIL_V_MSG(INVALID_WINDOW_ID, "Can't create a Vulkan context");
+			}
 		}
 #endif
 #if defined(GLES3_ENABLED)
+		bool gl_failed = false;
 		if (gl_manager_legacy) {
 			Error err = gl_manager_legacy->window_create(window_id_counter, wd.window_view, p_rect.size.width, p_rect.size.height);
-			ERR_FAIL_COND_V_MSG(err != OK, INVALID_WINDOW_ID, "Can't create an OpenGL context.");
+			if (err != OK) {
+				gl_failed = true;
+			}
 		}
 		if (gl_manager_angle) {
 			CALayer *layer = [(NSView *)wd.window_view layer];
 			Error err = gl_manager_angle->window_create(window_id_counter, nullptr, (__bridge void *)layer, p_rect.size.width, p_rect.size.height);
-			ERR_FAIL_COND_V_MSG(err != OK, INVALID_WINDOW_ID, "Can't create an OpenGL context.");
+			if (err != OK) {
+				gl_failed = true;
+			}
 		}
-		window_set_vsync_mode(p_vsync_mode, window_id_counter);
+		if (gl_failed) {
+#ifdef ACCESSKIT_ENABLED
+			if (accessibility_driver) {
+				accessibility_driver->window_destroy(id);
+			}
+#endif
+			windows.erase(id);
+			ERR_FAIL_V_MSG(INVALID_WINDOW_ID, "Can't create an OpenGL context");
+		}
+		window_set_vsync_mode(p_vsync_mode, id);
 #endif
 		[wd.window_view updateLayerDelegate];
 
@@ -207,10 +252,8 @@ DisplayServerMacOS::WindowID DisplayServerMacOS::_create_window(WindowMode p_mod
 		offset.y = (nsrect.origin.y + nsrect.size.height);
 		offset.y -= (windowRect.origin.y + windowRect.size.height);
 		[wd.window_object setFrameTopLeftPoint:NSMakePoint(wpos.x - offset.x, wpos.y - offset.y)];
-
-		id = window_id_counter++;
-		windows[id] = wd;
 	}
+	window_id_counter++;
 
 	WindowData &wd = windows[id];
 	window_set_mode(p_mode, id);
@@ -764,6 +807,8 @@ bool DisplayServerMacOS::get_is_resizing() const {
 }
 
 void DisplayServerMacOS::window_destroy(WindowID p_window) {
+	ERR_FAIL_COND(!windows.has(p_window));
+
 #if defined(GLES3_ENABLED)
 	if (gl_manager_legacy) {
 		gl_manager_legacy->window_destroy(p_window);
@@ -772,6 +817,11 @@ void DisplayServerMacOS::window_destroy(WindowID p_window) {
 #ifdef VULKAN_ENABLED
 	if (context_vulkan) {
 		context_vulkan->window_destroy(p_window);
+	}
+#endif
+#ifdef ACCESSKIT_ENABLED
+	if (accessibility_driver) {
+		accessibility_driver->window_destroy(p_window);
 	}
 #endif
 	windows.erase(p_window);
@@ -816,6 +866,11 @@ bool DisplayServerMacOS::has_feature(Feature p_feature) const {
 		case FEATURE_EXTEND_TO_TITLE:
 		case FEATURE_SCREEN_CAPTURE:
 			return true;
+#ifdef ACCESSKIT_ENABLED
+		case FEATURE_ACCESSIBILITY_SCREEN_READER: {
+			return (accessibility_driver != nullptr);
+		} break;
+#endif
 		default: {
 		}
 	}
@@ -3769,6 +3824,22 @@ DisplayServer::VSyncMode DisplayServerMacOS::window_get_vsync_mode(WindowID p_wi
 	return DisplayServer::VSYNC_ENABLED;
 }
 
+int DisplayServerMacOS::accessibility_should_increase_contrast() const {
+	return [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldIncreaseContrast];
+}
+
+int DisplayServerMacOS::accessibility_should_reduce_animation() const {
+	return [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldReduceMotion];
+}
+
+int DisplayServerMacOS::accessibility_should_reduce_transparency() const {
+	return [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldReduceTransparency];
+}
+
+int DisplayServerMacOS::accessibility_screen_reader_active() const {
+	return [[NSWorkspace sharedWorkspace] isVoiceOverEnabled];
+}
+
 Point2i DisplayServerMacOS::ime_get_selection() const {
 	return im_selection;
 }
@@ -4444,6 +4515,16 @@ DisplayServerMacOS::DisplayServerMacOS(const String &p_rendering_driver, WindowM
 		tts = [[TTS_MacOS alloc] init];
 	}
 
+#ifdef ACCESSKIT_ENABLED
+	if (accessibility_get_mode() != DisplayServer::AccessibilityMode::ACCESSIBILITY_DISABLED) {
+		accessibility_driver = memnew(AccessibilityDriverAccessKit);
+		if (accessibility_driver->init() != OK) {
+			memdelete(accessibility_driver);
+			accessibility_driver = nullptr;
+		}
+	}
+#endif
+
 	NSMenuItem *menu_item;
 	NSString *title;
 
@@ -4608,7 +4689,11 @@ DisplayServerMacOS::~DisplayServerMacOS() {
 		context_vulkan = nullptr;
 	}
 #endif
-
+#ifdef ACCESSKIT_ENABLED
+	if (accessibility_driver) {
+		memdelete(accessibility_driver);
+	}
+#endif
 	CFNotificationCenterRemoveObserver(CFNotificationCenterGetDistributedCenter(), nullptr, kTISNotifySelectedKeyboardInputSourceChanged, nullptr);
 	CGDisplayRemoveReconfigurationCallback(_displays_arrangement_changed, nullptr);
 

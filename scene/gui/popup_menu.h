@@ -41,6 +41,9 @@ class PopupMenu : public Popup {
 	GDCLASS(PopupMenu, Popup);
 
 	struct Item {
+		mutable RID accessibility_item_element;
+		mutable bool accessibility_item_dirty = true;
+
 		Ref<Texture2D> icon;
 		int icon_max_width = 0;
 		Color icon_modulate = Color(1, 1, 1, 1);
@@ -88,6 +91,7 @@ class PopupMenu : public Popup {
 			checkable_type = CHECKABLE_TYPE_NONE;
 		}
 	};
+	RID accessibility_scroll_element;
 
 	String global_menu_name;
 
@@ -101,6 +105,7 @@ class PopupMenu : public Popup {
 	BitField<MouseButtonMask> initial_button_mask;
 	bool during_grabbed_click = false;
 	int mouse_over = -1;
+	int prev_mouse_over = -1;
 	int submenu_over = -1;
 	String _get_accel_text(const Item &p_item) const;
 	int _get_mouse_over(const Point2 &p_over) const;
@@ -213,6 +218,8 @@ public:
 	// ATTENTION: This is used by the POT generator's scene parser. If the number of properties returned by `_get_items()` ever changes,
 	// this value should be updated to reflect the new size.
 	static const int ITEM_PROPERTY_SIZE = 10;
+
+	virtual RID get_focused_accessibility_element() const override;
 
 	virtual void _parent_focused() override;
 

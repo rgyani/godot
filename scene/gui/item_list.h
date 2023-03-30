@@ -51,6 +51,9 @@ public:
 
 private:
 	struct Item {
+		mutable RID accessibility_item_element;
+		mutable bool accessibility_item_dirty = true;
+
 		Ref<Texture2D> icon;
 		bool icon_transposed = false;
 		Rect2i icon_region;
@@ -82,9 +85,11 @@ private:
 			text_buf.instantiate();
 		}
 	};
+	RID accessibility_scroll_element;
 
 	int current = -1;
 	int hovered = -1;
+	int prev_hovered = -1;
 
 	bool shape_changed = true;
 
@@ -158,7 +163,16 @@ protected:
 	void _get_property_list(List<PropertyInfo> *p_list) const;
 	static void _bind_methods();
 
+	void _accessibility_action_scroll_set(const Variant &p_data);
+	void _accessibility_action_scroll_up(const Variant &p_data);
+	void _accessibility_action_scroll_down(const Variant &p_data);
+	void _accessibility_action_scroll_into_view(const Variant &p_data, int p_index);
+	void _accessibility_action_focus(const Variant &p_data, int p_index);
+	void _accessibility_action_blur(const Variant &p_data, int p_index);
+
 public:
+	virtual RID get_focused_accessibility_element() const override;
+
 	virtual void gui_input(const Ref<InputEvent> &p_event) override;
 
 	int add_item(const String &p_item, const Ref<Texture2D> &p_texture = Ref<Texture2D>(), bool p_selectable = true);

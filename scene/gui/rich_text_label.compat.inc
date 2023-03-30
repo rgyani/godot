@@ -30,12 +30,17 @@
 
 #ifndef DISABLE_DEPRECATED
 
-void RichTextLabel::_add_image_bind_compat_80410(const Ref<Texture2D> &p_image, const int p_width, const int p_height, const Color &p_color, InlineAlignment p_alignment, const Rect2 &p_region) {
-	add_image(p_image, p_width, p_height, p_color, p_alignment, p_region, Variant(), false, String(), false);
+void RichTextLabel::_add_image_bind_compat_76829(const Ref<Texture2D> &p_image, const int p_width, const int p_height, const Color &p_color, InlineAlignment p_alignment, const Rect2 &p_region) {
+	add_image(p_image, p_width, p_height, p_color, p_alignment, p_region, Variant(), false, String(), false, String());
+}
+
+void RichTextLabel::_push_table_76829(int p_columns, InlineAlignment p_alignment, int p_align_to_row) {
+	push_table(p_columns, p_alignment, p_align_to_row, String());
 }
 
 void RichTextLabel::_bind_compatibility_methods() {
-	ClassDB::bind_compatibility_method(D_METHOD("add_image", "image", "width", "height", "color", "inline_align", "region"), &RichTextLabel::_add_image_bind_compat_80410, DEFVAL(0), DEFVAL(0), DEFVAL(Color(1.0, 1.0, 1.0)), DEFVAL(INLINE_ALIGNMENT_CENTER), DEFVAL(Rect2()));
+	ClassDB::bind_compatibility_method(D_METHOD("add_image", "image", "width", "height", "color", "inline_align", "region"), &RichTextLabel::_add_image_bind_compat_76829, DEFVAL(0), DEFVAL(0), DEFVAL(Color(1.0, 1.0, 1.0)), DEFVAL(INLINE_ALIGNMENT_CENTER), DEFVAL(Rect2()));
+	ClassDB::bind_compatibility_method(D_METHOD("push_table", "columns", "inline_align", "align_to_row"), &RichTextLabel::_push_table_76829, DEFVAL(INLINE_ALIGNMENT_TOP), DEFVAL(-1));
 }
 
 #endif // DISABLE_DEPRECATED
