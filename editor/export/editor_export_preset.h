@@ -81,7 +81,6 @@ private:
 	String enc_in_filters;
 	String enc_ex_filters;
 	bool enc_pck = false;
-	bool enc_directory = false;
 
 	String script_key;
 
@@ -145,9 +144,6 @@ public:
 
 	void set_enc_pck(bool p_enabled);
 	bool get_enc_pck() const;
-
-	void set_enc_directory(bool p_enabled);
-	bool get_enc_directory() const;
 
 	void set_script_encryption_key(const String &p_key);
 	String get_script_encryption_key() const;

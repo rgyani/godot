@@ -31,6 +31,10 @@
 #include "gradle_export_util.h"
 
 #include "core/config/project_settings.h"
+#include "core/crypto/crypto_core.h"
+#include "core/io/file_access_encrypted.h"
+#include "core/io/file_access_memory.h"
+#include "core/io/file_access_pack.h"
 
 int _get_android_orientation_value(DisplayServer::ScreenOrientation screen_orientation) {
 	switch (screen_orientation) {
@@ -168,10 +172,89 @@ Error store_string_at_path(const String &p_path, const String &p_data) {
 // It's functionality mirrors that of the method save_apk_file.
 // This method will be called ONLY when gradle build is enabled.
 Error rename_and_store_file_in_gradle_project(void *p_userdata, const String &p_path, const Vector<uint8_t> &p_data, int p_file, int p_total, const Vector<String> &p_enc_in_filters, const Vector<String> &p_enc_ex_filters, const Vector<uint8_t> &p_key) {
-	CustomExportData *export_data = static_cast<CustomExportData *>(p_userdata);
-	String dst_path = p_path.replace_first("res://", export_data->assets_directory + "/");
-	print_verbose("Saving project files from " + p_path + " into " + dst_path);
-	Error err = store_file_at_path(dst_path, p_data);
+	CustomExportData *ed = static_cast<CustomExportData *>(p_userdata);
+	Error err = OK;
+
+	bool encrypted = false;
+
+	if (!p_key.is_empty()) {
+		if (PackedData::file_require_encrypion(p_path)) {
+			encrypted = true;
+		} else {
+			for (int i = 0; i < p_enc_in_filters.size(); ++i) {
+				if (p_path.matchn(p_enc_in_filters[i]) || p_path.replace("res://", "").matchn(p_enc_in_filters[i])) {
+					encrypted = true;
+					break;
+				}
+			}
+
+			for (int i = 0; i < p_enc_ex_filters.size(); ++i) {
+				if (p_path.matchn(p_enc_ex_filters[i]) || p_path.replace("res://", "").matchn(p_enc_ex_filters[i])) {
+					encrypted = false;
+					break;
+				}
+			}
+		}
+	}
+
+	if (encrypted && ed->enc_pack) {
+		String path = p_path;
+		if (path.begins_with("/")) {
+			path = path.substr(1, path.length());
+		} else if (path.begins_with("res://")) {
+			path = path.substr(6, path.length());
+		}
+
+		String id;
+		do {
+			CharString cs = path.utf8();
+			for (int i = 0; i < 16; i++) {
+				cs += char(32 + Math::rand() % 220);
+			}
+			unsigned char hash[32];
+			CryptoCore::sha256((unsigned char *)cs.ptr(), cs.length(), hash);
+			id = String::hex_encode_buffer(hash, 32);
+		} while (ed->ids.has(id));
+
+		ed->ids.insert(id);
+
+		Vector<uint8_t> enc_data;
+		uint64_t len = p_data.size();
+		if (len % 16) {
+			len += 16 - (len % 16);
+		}
+		len += 4 + 16 + 8 + 16; /* Encrypted file overhead, magic, md5, orig size, iv */
+		enc_data.resize(len);
+
+		Ref<FileAccessMemory> fmem;
+		fmem.instantiate();
+		ERR_FAIL_COND_V(fmem.is_null(), ERR_SKIP);
+		err = fmem->open_custom(enc_data.ptrw(), enc_data.size());
+		ERR_FAIL_COND_V(err != OK, ERR_SKIP);
+
+		Ref<FileAccessEncrypted> fae;
+		fae.instantiate();
+		ERR_FAIL_COND_V(fae.is_null(), ERR_SKIP);
+		err = fae->open_and_parse(fmem, p_key, FileAccessEncrypted::MODE_WRITE_AES256, false);
+		ERR_FAIL_COND_V(err != OK, ERR_SKIP);
+
+		// Store file content.
+		fae->store_buffer(p_data.ptr(), p_data.size());
+
+		fae.unref();
+		fmem.unref();
+
+		ed->directory[path] = id;
+
+		String dst_path = ed->assets_directory + "/encrypted/" + id;
+		print_verbose("Saving project files from " + p_path + " into " + dst_path);
+		err = store_file_at_path(dst_path, enc_data);
+	} else {
+		String dst_path = p_path.replace_first("res://", ed->assets_directory + "/");
+		print_verbose("Saving project files from " + p_path + " into " + dst_path);
+		err = store_file_at_path(dst_path, p_data);
+	}
+
 	return err;
 }
 

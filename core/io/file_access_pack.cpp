@@ -37,9 +37,11 @@
 
 #include <stdio.h>
 
-Error PackedData::add_pack(const String &p_path, bool p_replace_files, uint64_t p_offset) {
+HashSet<String> PackedData::require_encrypion;
+
+Error PackedData::add_pack(const String &p_path, bool p_replace_files, uint64_t p_offset, bool p_require_encrypion) {
 	for (int i = 0; i < sources.size(); i++) {
-		if (sources[i]->try_open_pack(p_path, p_replace_files, p_offset)) {
+		if (sources[i]->try_open_pack(p_path, p_replace_files, p_offset, p_require_encrypion)) {
 			return OK;
 		}
 	}
@@ -118,6 +120,17 @@ void PackedData::_free_packed_dirs(PackedDir *p_dir) {
 	memdelete(p_dir);
 }
 
+bool PackedData::file_require_encrypion(const String &p_name) {
+	if (require_encrypion.is_empty()) {
+		// Core files, always encrypt if PCK encryption is enabled.
+		require_encrypion.insert("project.godot");
+		require_encrypion.insert("project.binary");
+		require_encrypion.insert("extension_list.cfg");
+		require_encrypion.insert("override.cfg");
+	}
+	return require_encrypion.has(p_name.get_file());
+}
+
 PackedData::~PackedData() {
 	for (int i = 0; i < sources.size(); i++) {
 		memdelete(sources[i]);
@@ -127,7 +140,7 @@ PackedData::~PackedData() {
 
 //////////////////////////////////////////////////////////////////
 
-bool PackedSourcePCK::try_open_pack(const String &p_path, bool p_replace_files, uint64_t p_offset) {
+bool PackedSourcePCK::try_open_pack(const String &p_path, bool p_replace_files, uint64_t p_offset, bool p_require_encrypion) {
 	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ);
 	if (f.is_null()) {
 		return false;
@@ -209,6 +222,8 @@ bool PackedSourcePCK::try_open_pack(const String &p_path, bool p_replace_files, 
 
 	bool enc_directory = (pack_flags & PACK_DIR_ENCRYPTED);
 
+	ERR_FAIL_COND_V_MSG(p_require_encrypion && !enc_directory, false, "Can't open encrypted pack directory.");
+
 	for (int i = 0; i < 16; i++) {
 		//reserved
 		f->get_32();
@@ -247,6 +262,8 @@ bool PackedSourcePCK::try_open_pack(const String &p_path, bool p_replace_files, 
 		uint8_t md5[16];
 		f->get_buffer(md5, 16);
 		uint32_t flags = f->get_32();
+
+		ERR_FAIL_COND_V_MSG(p_require_encrypion && PackedData::file_require_encrypion(path) && (flags & PACK_FILE_ENCRYPTED) != PACK_FILE_ENCRYPTED, false, "Can't open encrypted pack-referenced file '" + path + "'.");
 
 		PackedData::get_singleton()->add_path(p_path, path, ofs + p_offset, size, md5, this, p_replace_files, (flags & PACK_FILE_ENCRYPTED));
 	}
