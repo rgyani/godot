@@ -63,6 +63,9 @@ static const int XR_MODE_OPENXR = 1;
 
 struct CustomExportData {
 	String assets_directory;
+	bool enc_pack = false;
+	HashMap<String, String> directory;
+	HashSet<String> ids;
 	bool debug;
 	Vector<String> libs;
 };

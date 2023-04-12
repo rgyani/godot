@@ -201,17 +201,23 @@ Error EditorExportPlatform::_save_pack_file(void *p_userdata, const String &p_pa
 	sd.size = p_data.size();
 	sd.encrypted = false;
 
-	for (int i = 0; i < p_enc_in_filters.size(); ++i) {
-		if (p_path.matchn(p_enc_in_filters[i]) || p_path.replace("res://", "").matchn(p_enc_in_filters[i])) {
+	if (!p_key.is_empty()) {
+		if (PackedData::file_require_encrypion(p_path)) {
 			sd.encrypted = true;
-			break;
-		}
-	}
+		} else {
+			for (int i = 0; i < p_enc_in_filters.size(); ++i) {
+				if (p_path.matchn(p_enc_in_filters[i]) || p_path.replace("res://", "").matchn(p_enc_in_filters[i])) {
+					sd.encrypted = true;
+					break;
+				}
+			}
 
-	for (int i = 0; i < p_enc_ex_filters.size(); ++i) {
-		if (p_path.matchn(p_enc_ex_filters[i]) || p_path.replace("res://", "").matchn(p_enc_ex_filters[i])) {
-			sd.encrypted = false;
-			break;
+			for (int i = 0; i < p_enc_ex_filters.size(); ++i) {
+				if (p_path.matchn(p_enc_ex_filters[i]) || p_path.replace("res://", "").matchn(p_enc_ex_filters[i])) {
+					sd.encrypted = false;
+					break;
+				}
+			}
 		}
 	}
 
@@ -1576,8 +1582,7 @@ Error EditorExportPlatform::save_pack(const Ref<EditorExportPreset> &p_preset, b
 
 	uint32_t pack_flags = 0;
 	bool enc_pck = p_preset->get_enc_pck();
-	bool enc_directory = p_preset->get_enc_directory();
-	if (enc_pck && enc_directory) {
+	if (enc_pck) {
 		pack_flags |= PACK_DIR_ENCRYPTED;
 	}
 	f->store_32(pack_flags); // flags
@@ -1595,7 +1600,7 @@ Error EditorExportPlatform::save_pack(const Ref<EditorExportPreset> &p_preset, b
 	Ref<FileAccessEncrypted> fae;
 	Ref<FileAccess> fhead = f;
 
-	if (enc_pck && enc_directory) {
+	if (enc_pck) {
 		String script_key = _get_script_encryption_key(p_preset);
 		Vector<uint8_t> key;
 		key.resize(32);
