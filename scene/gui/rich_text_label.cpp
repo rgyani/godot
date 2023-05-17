@@ -825,13 +825,13 @@ int RichTextLabel::_draw_line(ItemFrame *p_frame, int p_line, const Vector2 &p_o
 		if (rtl) {
 			float offx = 0.0f;
 			if (!lrtl && p_frame == main) { // Skip Scrollbar.
-				offx -= scroll_w;
+				offx -= scroll_w.load();
 			}
 			font->draw_string(ci, p_ofs + Vector2(p_width - l.offset.x + offx, l.text_buf->get_line_ascent(0)), " " + prefix, HORIZONTAL_ALIGNMENT_LEFT, l.offset.x, font_size, _find_color(l.from, p_base_color));
 		} else {
 			float offx = 0.0f;
 			if (lrtl && p_frame == main) { // Skip Scrollbar.
-				offx += scroll_w;
+				offx += scroll_w.load();
 			}
 			font->draw_string(ci, p_ofs + Vector2(offx, l.text_buf->get_line_ascent(0)), prefix + " ", HORIZONTAL_ALIGNMENT_RIGHT, l.offset.x, font_size, _find_color(l.from, p_base_color));
 		}
@@ -872,12 +872,12 @@ int RichTextLabel::_draw_line(ItemFrame *p_frame, int p_line, const Vector2 &p_o
 		if (rtl) {
 			off.x = p_width - l.offset.x - width;
 			if (!lrtl && p_frame == main) { // Skip Scrollbar.
-				off.x -= scroll_w;
+				off.x -= scroll_w.load();
 			}
 		} else {
 			off.x = l.offset.x;
 			if (lrtl && p_frame == main) { // Skip Scrollbar.
-				off.x += scroll_w;
+				off.x += scroll_w.load();
 			}
 		}
 
@@ -1451,12 +1451,12 @@ float RichTextLabel::_find_click_in_line(ItemFrame *p_frame, int p_line, const V
 		if (rtl) {
 			off.x = p_width - l.offset.x - width;
 			if (!lrtl && p_frame == main) { // Skip Scrollbar.
-				off.x -= scroll_w;
+				off.x -= scroll_w.load();
 			}
 		} else {
 			off.x = l.offset.x;
 			if (lrtl && p_frame == main) { // Skip Scrollbar.
-				off.x += scroll_w;
+				off.x += scroll_w.load();
 			}
 		}
 
@@ -2719,13 +2719,16 @@ bool RichTextLabel::_find_layout_subitem(Item *from, Item *to) {
 
 void RichTextLabel::_thread_function(void *p_userdata) {
 	set_current_thread_safe_for_nodes(true);
-	_process_line_caches();
+	bool success = _process_line_caches();
 	updating.store(false);
-	call_deferred(SNAME("thread_end"));
+	call_deferred(SNAME("thread_end"), success);
 }
 
-void RichTextLabel::_thread_end() {
+void RichTextLabel::_thread_end(bool p_success) {
 	set_physics_process_internal(false);
+	if (p_success) {
+		emit_signal(SNAME("finished"));
+	}
 	if (is_visible_in_tree()) {
 		queue_redraw();
 	}
@@ -2813,22 +2816,19 @@ bool RichTextLabel::_validate_line_caches() {
 
 		float total_height = (fi == 0) ? 0 : _calculate_line_vertical_offset(main->lines[fi - 1]);
 		for (int i = fi; i < (int)main->lines.size(); i++) {
-			total_height = _resize_line(main, i, theme_cache.normal_font, theme_cache.normal_font_size, text_rect.get_size().width - scroll_w, total_height);
+			total_height = _resize_line(main, i, theme_cache.normal_font, theme_cache.normal_font_size, text_rect.get_size().width - scroll_w.load(), total_height);
 
 			updating_scroll = true;
 			bool exceeds = total_height > ctrl_height && scroll_active;
-			if (exceeds != scroll_visible) {
+			if (exceeds != scroll_visible.load()) {
 				if (exceeds) {
-					scroll_visible = true;
-					scroll_w = vscroll->get_combined_minimum_size().width;
-					vscroll->show();
-					vscroll->set_anchor_and_offset(SIDE_LEFT, ANCHOR_END, -scroll_w);
+					scroll_visible.store(true);
+					scroll_w.store(vscroll->get_combined_minimum_size().width);
 				} else {
-					scroll_visible = false;
-					scroll_w = 0;
-					vscroll->hide();
+					scroll_visible.store(false);
+					scroll_w.store(0);
 				}
-
+				_toggle_scroll();
 				main->first_resized_line.store(0);
 
 				total_height = 0;
@@ -2861,6 +2861,11 @@ bool RichTextLabel::_validate_line_caches() {
 	}
 	validating.store(false);
 	stop_thread.store(false);
+
+	cache.text_rect = _get_text_rect();
+	cache.ctrl_height = get_size().height;
+	cache.scroll_w = vscroll->get_combined_minimum_size().width;
+
 	if (threaded) {
 		updating.store(true);
 		loaded.store(true);
@@ -2870,42 +2875,63 @@ bool RichTextLabel::_validate_line_caches() {
 		return false;
 	} else {
 		updating.store(true);
-		_process_line_caches();
+		if (_process_line_caches()) {
+			emit_signal(SNAME("finished"));
+		}
 		updating.store(false);
 		queue_redraw();
 		return true;
 	}
 }
 
-void RichTextLabel::_process_line_caches() {
+void RichTextLabel::_toggle_scroll() {
+	updating_scroll = true;
+	if (scroll_visible.load()) {
+		vscroll->show();
+		vscroll->set_anchor_and_offset(SIDE_LEFT, ANCHOR_END, -scroll_w.load());
+	} else {
+		vscroll->hide();
+	}
+	updating_scroll = false;
+}
+
+void RichTextLabel::_update_scroll() {
+	updating_scroll = true;
+	vscroll->set_max(scroll_max.load());
+	vscroll->set_page(_get_text_rect().size.height);
+	if (scroll_follow && scroll_following) {
+		vscroll->set_value(scroll_max.load());
+	}
+	updating_scroll = false;
+}
+
+bool RichTextLabel::_process_line_caches() {
 	// Shape invalid lines.
 	if (!is_inside_tree()) {
-		return;
+		return false;
 	}
 
 	MutexLock data_lock(data_mutex);
-	Rect2 text_rect = _get_text_rect();
+	Rect2 text_rect = cache.text_rect;
 
-	int ctrl_height = get_size().height;
+	int ctrl_height = cache.ctrl_height;
 	int fi = main->first_invalid_line.load();
 	int total_chars = main->lines[fi].char_offset;
 
 	float total_height = (fi == 0) ? 0 : _calculate_line_vertical_offset(main->lines[fi - 1]);
 	for (int i = fi; i < (int)main->lines.size(); i++) {
-		total_height = _shape_line(main, i, theme_cache.normal_font, theme_cache.normal_font_size, text_rect.get_size().width - scroll_w, total_height, &total_chars);
-		updating_scroll = true;
+		total_height = _shape_line(main, i, theme_cache.normal_font, theme_cache.normal_font_size, text_rect.get_size().width - scroll_w.load(), total_height, &total_chars);
+
 		bool exceeds = total_height > ctrl_height && scroll_active;
-		if (exceeds != scroll_visible) {
+		if (exceeds != scroll_visible.load()) {
 			if (exceeds) {
-				scroll_visible = true;
-				scroll_w = vscroll->get_combined_minimum_size().width;
-				vscroll->show();
-				vscroll->set_anchor_and_offset(SIDE_LEFT, ANCHOR_END, -scroll_w);
+				scroll_visible.store(true);
+				scroll_w.store(cache.scroll_w);
 			} else {
-				scroll_visible = false;
-				scroll_w = 0;
-				vscroll->hide();
+				scroll_visible.store(false);
+				scroll_w.store(0);
 			}
+			call_deferred(SNAME("_toggle_scroll"));
 			main->first_invalid_line.store(0);
 			main->first_resized_line.store(0);
 			main->first_invalid_font_line.store(0);
@@ -2913,7 +2939,7 @@ void RichTextLabel::_process_line_caches() {
 			// since scroll was added or removed we need to resize all lines
 			total_height = 0;
 			for (int j = 0; j <= i; j++) {
-				total_height = _resize_line(main, j, theme_cache.normal_font, theme_cache.normal_font_size, text_rect.get_size().width - scroll_w, total_height);
+				total_height = _resize_line(main, j, theme_cache.normal_font, theme_cache.normal_font_size, text_rect.get_size().width - scroll_w.load(), total_height);
 
 				main->first_invalid_line.store(j);
 				main->first_resized_line.store(j);
@@ -2921,19 +2947,15 @@ void RichTextLabel::_process_line_caches() {
 			}
 		}
 
-		vscroll->set_max(total_height);
-		vscroll->set_page(text_rect.size.height);
-		if (scroll_follow && scroll_following) {
-			vscroll->set_value(total_height);
-		}
-		updating_scroll = false;
+		scroll_max.store(total_height);
+		call_deferred(SNAME("_update_scroll"));
 
 		main->first_invalid_line.store(i);
 		main->first_resized_line.store(i);
 		main->first_invalid_font_line.store(i);
 
 		if (stop_thread.load()) {
-			return;
+			return false;
 		}
 		loaded.store(double(i) / double(main->lines.size()));
 	}
@@ -2945,7 +2967,7 @@ void RichTextLabel::_process_line_caches() {
 	if (fit_content) {
 		update_minimum_size();
 	}
-	emit_signal(SNAME("finished"));
+	return true;
 }
 
 void RichTextLabel::_invalidate_current_line(ItemFrame *p_frame) {
@@ -5615,6 +5637,9 @@ void RichTextLabel::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("_thread_end"), &RichTextLabel::_thread_end);
 
+	ClassDB::bind_method(D_METHOD("_toggle_scroll"), &RichTextLabel::_toggle_scroll);
+	ClassDB::bind_method(D_METHOD("_update_scroll"), &RichTextLabel::_update_scroll);
+
 	// Note: set "bbcode_enabled" first, to avoid unnecessary "text" resets.
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "bbcode_enabled"), "set_use_bbcode", "is_using_bbcode");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "text", PROPERTY_HINT_MULTILINE_TEXT), "set_text", "get_text");
@@ -6006,6 +6031,10 @@ RichTextLabel::RichTextLabel(const String &p_text) {
 	main->first_resized_line.store(0);
 	main->first_invalid_font_line.store(0);
 	current_frame = main;
+
+	scroll_visible.store(false);
+	scroll_w.store(0);
+	scroll_max.store(0);
 
 	vscroll = memnew(VScrollBar);
 	add_child(vscroll, false, INTERNAL_MODE_FRONT);
