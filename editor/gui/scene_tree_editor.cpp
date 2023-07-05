@@ -140,7 +140,7 @@ void SceneTreeEditor::_cell_button_pressed(Object *p_item, int p_column, int p_i
 		for (int i = 0; i < boundaries.size(); i += 2) {
 			const int start = boundaries[i];
 			const int end = boundaries[i + 1];
-			lines.append(config_err.substr(start, end - start + 1));
+			lines.append(config_err.substr(start, end - start));
 		}
 
 		warning->set_text(String("\n").join(lines));
