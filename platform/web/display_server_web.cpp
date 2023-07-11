@@ -151,7 +151,14 @@ void DisplayServerWeb::key_callback(int p_pressed, int p_repeat, int p_modifiers
 	ev->set_pressed(p_pressed);
 	dom2godot_mod(ev, p_modifiers, fix_keycode(c, keycode));
 
-	Input::get_singleton()->parse_input_event(ev);
+	if (ds->ime_active) {
+		if (ds->key_event_pos >= ds->key_event_buffer.size()) {
+			ds->key_event_buffer.resize(1 + ds->key_event_pos);
+		}
+		ds->key_event_buffer.write[ds->key_event_pos++] = ev;
+	} else {
+		Input::get_singleton()->parse_input_event(ev);
+	}
 
 	// Make sure to flush all events so we can call restricted APIs inside the event.
 	Input::get_singleton()->flush_buffered_events();
@@ -662,6 +669,84 @@ void DisplayServerWeb::gamepad_callback(int p_index, int p_connected, const char
 	}
 }
 
+void DisplayServerWeb::ime_callback(int p_type, const char *p_text) {
+	DisplayServerWeb *ds = get_singleton();
+	// Resume audio context after input in case autoplay was denied.
+	OS_Web::get_singleton()->resume_audio();
+
+	switch (p_type) {
+		case 0: {
+			// IME start.
+			ds->ime_text = String();
+			ds->ime_selection = Vector2i();
+			for (int i = ds->key_event_pos - 1; i >= 0; i--) {
+				// Delete last keydown event from query.
+				if (ds->key_event_buffer[i]->is_pressed()) {
+					ds->key_event_buffer.remove_at(i);
+					ds->key_event_pos--;
+					break;
+				}
+			}
+			OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_OS_IME_UPDATE);
+			ds->ime_active = true;
+		} break;
+		case 1: {
+			// IME update.
+			if (ds->ime_active) {
+				ds->ime_text = String::utf8(p_text);
+				ds->ime_selection = Vector2i(ds->ime_text.length(), ds->ime_text.length());
+				OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_OS_IME_UPDATE);
+			}
+		} break;
+		case 2: {
+			// IME commit.
+			if (ds->ime_active) {
+				ds->ime_active = false;
+
+				ds->ime_text = String();
+				ds->ime_selection = Vector2i();
+				OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_OS_IME_UPDATE);
+
+				String text = String::utf8(p_text);
+				for (int i = 0; i < text.length(); i++) {
+					Ref<InputEventKey> ev;
+					ev.instantiate();
+					ev->set_echo(false);
+					ev->set_keycode(Key::NONE);
+					ev->set_physical_keycode(Key::NONE);
+					ev->set_key_label(Key::NONE);
+					ev->set_unicode(text[i]);
+					ev->set_pressed(true);
+
+					if (ds->key_event_pos >= ds->key_event_buffer.size()) {
+						ds->key_event_buffer.resize(1 + ds->key_event_pos);
+					}
+					ds->key_event_buffer.write[ds->key_event_pos++] = ev;
+				}
+			}
+		} break;
+		default:
+			break;
+	}
+}
+
+void DisplayServerWeb::window_set_ime_active(const bool p_active, WindowID p_window) {
+	ime_active = p_active;
+	godot_js_set_ime_active(p_active);
+}
+
+void DisplayServerWeb::window_set_ime_position(const Point2i &p_pos, WindowID p_window) {
+	godot_js_set_ime_position(p_pos.x, p_pos.y);
+}
+
+Point2i DisplayServerWeb::DisplayServerWeb::ime_get_selection() const {
+	return ime_selection;
+}
+
+String DisplayServerWeb::DisplayServerWeb::ime_get_text() const {
+	return ime_text;
+}
+
 void DisplayServerWeb::process_joypads() {
 	Input *input = Input::get_singleton();
 	int32_t pads = godot_js_input_gamepad_sample_count();
@@ -839,6 +924,7 @@ DisplayServerWeb::DisplayServerWeb(const String &p_rendering_driver, WindowMode 
 	godot_js_input_paste_cb(update_clipboard_callback);
 	godot_js_input_drop_files_cb(drop_files_js_callback);
 	godot_js_input_gamepad_cb(&DisplayServerWeb::gamepad_callback);
+	godot_js_set_ime_cb(&DisplayServerWeb::ime_callback);
 
 	// JS Display interface (js/libs/library_godot_display.js)
 	godot_js_display_fullscreen_cb(&DisplayServerWeb::fullscreen_change_callback);
@@ -866,7 +952,7 @@ bool DisplayServerWeb::has_feature(Feature p_feature) const {
 	switch (p_feature) {
 		//case FEATURE_GLOBAL_MENU:
 		//case FEATURE_HIDPI:
-		//case FEATURE_IME:
+		case FEATURE_IME:
 		case FEATURE_ICON:
 		case FEATURE_CLIPBOARD:
 		case FEATURE_CURSOR_SHAPE:
@@ -1099,6 +1185,11 @@ void DisplayServerWeb::process_events() {
 	Input::get_singleton()->flush_buffered_events();
 	if (godot_js_input_gamepad_sample() == OK) {
 		process_joypads();
+		for (int i = 0; i < key_event_pos; i++) {
+			const Ref<InputEventKey> &ke = key_event_buffer[i];
+			Input::get_singleton()->parse_input_event(ke);
+		}
+		key_event_pos = 0;
 	}
 }
 

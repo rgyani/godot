@@ -456,6 +456,82 @@ const GodotInput = {
 		GodotEventListeners.add(GodotConfig.canvas, 'keyup', key_cb.bind(null, 0), false);
 	},
 
+	godot_js_set_ime_active__sig: 'vi',
+	godot_js_set_ime_active: function (active) {
+		const ime = document.querySelector('div[id="ime"]');
+
+		function focus_timer() {
+			ime.focus();
+		}
+
+		if (ime) {
+			if (active) {
+				ime.style.display = 'block';
+				setInterval(focus_timer, 100);
+			} else {
+				ime.style.display = 'none';
+				GodotConfig.canvas.focus();
+			}
+		}
+	},
+
+	godot_js_set_ime_position__sig: 'vii',
+	godot_js_set_ime_position: function (x, y) {
+		const ime = document.querySelector('div[id="ime"]');
+		if (ime) {
+			ime.style.left = `${x}px`;
+			ime.style.top = `${y}px`;
+		}
+	},
+
+	godot_js_set_ime_cb__sig: 'vi',
+	godot_js_set_ime_cb: function (callback) {
+		const func = GodotRuntime.get_func(callback);
+
+		function ime_cb(event) {
+			const ime = document.querySelector('div[id="ime"]');
+			if (ime) {
+				if (event.type === 'compositionstart') {
+					func(0, null);
+					ime.innerHTML = '';
+				} else if (event.type === 'compositionupdate') {
+					const ptr = GodotRuntime.allocString(event.data);
+					func(1, ptr);
+					GodotRuntime.free(ptr);
+				} else if (event.type === 'compositionend') {
+					const ptr = GodotRuntime.allocString(event.data);
+					func(2, ptr);
+					GodotRuntime.free(ptr);
+					ime.innerHTML = '';
+				}
+			}
+		}
+
+		const ime = document.createElement('div');
+		ime.className = 'ime';
+		ime.style.background = 'none';
+		ime.style.opacity = 0.0;
+		ime.style.position = 'absolute';
+		ime.style.left = '0px';
+		ime.style.top = '0px';
+		ime.style.width = '2px';
+		ime.style.height = '2px';
+		ime.style.display = 'none';
+		ime.id = 'ime';
+		ime.contentEditable = 'true';
+
+		GodotEventListeners.add(ime, 'compositionstart', ime_cb, false);
+		GodotEventListeners.add(ime, 'compositionupdate', ime_cb, false);
+		GodotEventListeners.add(ime, 'compositionend', ime_cb, false);
+
+		ime.onblur = function () {
+			this.style.display = 'none';
+			GodotConfig.canvas.focus();
+		};
+
+		GodotConfig.canvas.appendChild(ime);
+	},
+
 	/*
 	 * Gamepad API
 	 */
