@@ -105,6 +105,7 @@
 			<param index="4" name="mode" type="int" enum="DisplayServer.FileDialogMode" />
 			<param index="5" name="filters" type="PackedStringArray" />
 			<param index="6" name="callback" type="Callable" />
+			<param index="7" name="modal" type="bool" default="true" />
 			<description>
 				Displays OS native dialog for selecting files or directories in the file system.
 				Callbacks have the following arguments: [code]bool status, PackedStringArray selected_paths[/code].

@@ -217,8 +217,74 @@ void DisplayServerWindows::tts_stop() {
 	tts->stop();
 }
 
-Error DisplayServerWindows::file_dialog_show(const String &p_title, const String &p_current_directory, const String &p_filename, bool p_show_hidden, FileDialogMode p_mode, const Vector<String> &p_filters, const Callable &p_callback) {
+void DisplayServerWindows::_file_dialog_callback(void *p_ud) {
+	DisplayServerWindows *ds = (DisplayServerWindows *)DisplayServer::get_singleton();
+	int32_t key = (int32_t)(size_t)p_ud;
+	FileDialogData &fd = ds->file_dialogs[key];
+
+	HRESULT hr = fd.panel->Show(nullptr);
+	if (SUCCEEDED(hr)) {
+		Vector<String> file_names;
+
+		if (!fd.save) {
+			IShellItemArray *results;
+			hr = static_cast<IFileOpenDialog *>(fd.panel)->GetResults(&results);
+			if (SUCCEEDED(hr)) {
+				DWORD count = 0;
+				results->GetCount(&count);
+				for (DWORD i = 0; i < count; i++) {
+					IShellItem *result;
+					results->GetItemAt(i, &result);
+
+					PWSTR file_path = nullptr;
+					hr = result->GetDisplayName(SIGDN_FILESYSPATH, &file_path);
+					if (SUCCEEDED(hr)) {
+						file_names.push_back(String::utf16((const char16_t *)file_path));
+						CoTaskMemFree(file_path);
+					}
+					result->Release();
+				}
+				results->Release();
+			}
+		} else {
+			IShellItem *result;
+			hr = fd.panel->GetResult(&result);
+			if (SUCCEEDED(hr)) {
+				PWSTR file_path = nullptr;
+				hr = result->GetDisplayName(SIGDN_FILESYSPATH, &file_path);
+				if (SUCCEEDED(hr)) {
+					file_names.push_back(String::utf16((const char16_t *)file_path));
+					CoTaskMemFree(file_path);
+				}
+				result->Release();
+			}
+		}
+		if (!fd.callback.is_null()) {
+			Variant v_status = true;
+			Variant v_files = file_names;
+			Variant *v_args[2] = { &v_status, &v_files };
+			fd.callback.call_deferredp((const Variant **)&v_args, 2);
+		}
+	} else {
+		if (!fd.callback.is_null()) {
+			Variant v_status = false;
+			Variant v_files = Vector<String>();
+			Variant *v_args[2] = { &v_status, &v_files };
+			fd.callback.call_deferredp((const Variant **)&v_args, 2);
+		}
+	}
+	fd.panel->Release();
+	fd.panel = nullptr;
+	fd.finished = true;
+}
+
+Error DisplayServerWindows::file_dialog_show(const String &p_title, const String &p_current_directory, const String &p_filename, bool p_show_hidden, FileDialogMode p_mode, const Vector<String> &p_filters, const Callable &p_callback, bool p_modal) {
 	_THREAD_SAFE_METHOD_
+
+	int32_t key = file_dialog_id++;
+	FileDialogData &fd = file_dialogs[key];
+
+	printf("T:%d start\n", key);
 
 	Vector<Char16String> filter_names;
 	Vector<Char16String> filter_exts;
@@ -277,65 +343,23 @@ Error DisplayServerWindows::file_dialog_show(const String &p_title, const String
 		pfd->SetFileTypes(filters.size(), filters.ptr());
 		pfd->SetFileTypeIndex(0);
 
-		hr = pfd->Show(nullptr);
-		if (SUCCEEDED(hr)) {
-			Vector<String> file_names;
+		fd.panel = pfd;
+		fd.save = p_mode == FILE_DIALOG_MODE_OPEN_FILES;
+		fd.owner = (p_modal) ? windows[MAIN_WINDOW_ID].hWnd : nullptr;
+		fd.callback = p_callback;
 
-			if (p_mode == FILE_DIALOG_MODE_OPEN_FILES) {
-				IShellItemArray *results;
-				hr = static_cast<IFileOpenDialog *>(pfd)->GetResults(&results);
-				if (SUCCEEDED(hr)) {
-					DWORD count = 0;
-					results->GetCount(&count);
-					for (DWORD i = 0; i < count; i++) {
-						IShellItem *result;
-						results->GetItemAt(i, &result);
-
-						PWSTR file_path = nullptr;
-						hr = result->GetDisplayName(SIGDN_FILESYSPATH, &file_path);
-						if (SUCCEEDED(hr)) {
-							file_names.push_back(String::utf16((const char16_t *)file_path));
-							CoTaskMemFree(file_path);
-						}
-						result->Release();
-					}
-					results->Release();
-				}
-			} else {
-				IShellItem *result;
-				hr = pfd->GetResult(&result);
-				if (SUCCEEDED(hr)) {
-					PWSTR file_path = nullptr;
-					hr = result->GetDisplayName(SIGDN_FILESYSPATH, &file_path);
-					if (SUCCEEDED(hr)) {
-						file_names.push_back(String::utf16((const char16_t *)file_path));
-						CoTaskMemFree(file_path);
-					}
-					result->Release();
-				}
-			}
-			if (!p_callback.is_null()) {
-				Variant v_status = true;
-				Variant v_files = file_names;
-				Variant *v_args[2] = { &v_status, &v_files };
-				Variant ret;
-				Callable::CallError ce;
-				p_callback.callp((const Variant **)&v_args, 2, ret, ce);
-			}
+		if (p_modal) {
+			_file_dialog_callback((void *)(size_t)key);
+			file_dialogs.erase(key);
 		} else {
-			if (!p_callback.is_null()) {
-				Variant v_status = false;
-				Variant v_files = Vector<String>();
-				Variant *v_args[2] = { &v_status, &v_files };
-				Variant ret;
-				Callable::CallError ce;
-				p_callback.callp((const Variant **)&v_args, 2, ret, ce);
-			}
+			fd.thread = memnew(Thread);
+			fd.thread->start(DisplayServerWindows::_file_dialog_callback, (void *)(size_t)key);
 		}
-		pfd->Release();
 
+		printf("T:%d end OK\n", key);
 		return OK;
 	} else {
+		printf("T:%d edn F\n", key);
 		return ERR_CANT_OPEN;
 	}
 }
@@ -2232,6 +2256,20 @@ void DisplayServerWindows::process_events() {
 	if (!drop_events) {
 		_process_key_events();
 		Input::get_singleton()->flush_buffered_events();
+	}
+
+	Vector<int32_t> fd_to_delete;
+	for (HashMap<int32_t, FileDialogData>::Iterator E = file_dialogs.begin(); E; ++E) {
+		if (E->value.finished && E->value.thread) {
+			printf("P:%d del\n", E->key);
+			E->value.thread->wait_to_finish();
+			memdelete(E->value.thread);
+			E->value.thread = nullptr;
+			fd_to_delete.push_back(E->key);
+		}
+	}
+	for (const int32_t &E : fd_to_delete) {
+		file_dialogs.erase(E);
 	}
 }
 
@@ -4571,6 +4609,16 @@ void DisplayServerWindows::register_windows_driver() {
 }
 
 DisplayServerWindows::~DisplayServerWindows() {
+	for (HashMap<int32_t, FileDialogData>::Iterator E = file_dialogs.begin(); E; ++E) {
+		if (!E->value.finished && E->value.thread && E->value.panel) {
+			printf("P:%d rq close\n", E->key);
+			E->value.panel->Close(HRESULT_FROM_WIN32(ERROR_CANCELLED));
+			E->value.thread->wait_to_finish();
+			memdelete(E->value.thread);
+			E->value.thread = nullptr;
+		}
+	}
+
 	delete joypad;
 	touch_state.clear();
 

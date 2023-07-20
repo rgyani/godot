@@ -280,6 +280,8 @@ typedef struct {
 	ICONDIRENTRY idEntries[1]; // An entry for each image (idCount of 'em)
 } ICONDIR, *LPICONDIR;
 
+struct IFileDialog;
+
 class DisplayServerWindows : public DisplayServer {
 	// No need to register with GDCLASS, it's platform-specific and nothing is added.
 
@@ -428,6 +430,19 @@ class DisplayServerWindows : public DisplayServer {
 		Rect2i parent_safe_rect;
 	};
 
+	struct FileDialogData {
+		bool save = false;
+		bool finished = false;
+		IFileDialog *panel;
+		Callable callback;
+		HWND owner = nullptr;
+		Thread *thread = nullptr;
+	};
+	HashMap<int32_t, FileDialogData> file_dialogs;
+	int32_t file_dialog_id = 0;
+
+	static void _file_dialog_callback(void *p_ud);
+
 	JoypadWindows *joypad = nullptr;
 	HHOOK mouse_monitor = nullptr;
 	List<WindowID> popup_list;
@@ -511,7 +526,7 @@ public:
 	virtual bool is_dark_mode() const override;
 	virtual Color get_accent_color() const override;
 
-	virtual Error file_dialog_show(const String &p_title, const String &p_current_directory, const String &p_filename, bool p_show_hidden, FileDialogMode p_mode, const Vector<String> &p_filters, const Callable &p_callback) override;
+	virtual Error file_dialog_show(const String &p_title, const String &p_current_directory, const String &p_filename, bool p_show_hidden, FileDialogMode p_mode, const Vector<String> &p_filters, const Callable &p_callback, bool p_modal = true) override;
 
 	virtual void mouse_set_mode(MouseMode p_mode) override;
 	virtual MouseMode mouse_get_mode() const override;
