@@ -1914,15 +1914,15 @@ bool LineEdit::is_secret() const {
 }
 
 void LineEdit::set_secret_character(const String &p_string) {
-	// An empty string as the secret character would crash the engine.
-	// It also wouldn't make sense to use multiple characters as the secret character.
-	ERR_FAIL_COND_MSG(p_string.length() != 1, "Secret character must be exactly one character long (" + itos(p_string.length()) + " characters given).");
-
-	if (secret_character == p_string) {
+	String c = p_string;
+	if (c.length() > 1) {
+		WARN_PRINT("Secret character must be exactly one character long (" + itos(c.length()) + " characters given).");
+		c = c.left(1);
+	}
+	if (secret_character == c) {
 		return;
 	}
-
-	secret_character = p_string;
+	secret_character = c;
 	_shape();
 	queue_redraw();
 }
@@ -2281,7 +2281,8 @@ void LineEdit::_shape() {
 	if (text.length() == 0 && ime_text.length() == 0) {
 		t = placeholder_translated;
 	} else if (pass) {
-		t = secret_character.repeat(text.length() + ime_text.length());
+		String s = (secret_character.length() > 0) ? secret_character.left(1) : U"•";
+		t = s.repeat(text.length() + ime_text.length());
 	} else {
 		if (ime_text.length() > 0) {
 			t = text.substr(0, caret_column) + ime_text + text.substr(caret_column, text.length());
