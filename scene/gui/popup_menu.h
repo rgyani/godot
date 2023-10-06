@@ -191,6 +191,7 @@ class PopupMenu : public Popup {
 	void _minimum_lifetime_timeout();
 	void _close_pressed();
 	void _menu_changed();
+	bool _set_item_accelerator(int p_index, const Ref<InputEventKey> &p_ie);
 
 protected:
 	virtual void add_child_notify(Node *p_child) override;
