@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  cpu_particles_2d_editor_plugin.h                                      */
+/*  godot_open_save_delegate.h                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,68 +28,37 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef CPU_PARTICLES_2D_EDITOR_PLUGIN_H
-#define CPU_PARTICLES_2D_EDITOR_PLUGIN_H
+#ifndef GODOT_OPEN_SAVE_DELEGATE_H
+#define GODOT_OPEN_SAVE_DELEGATE_H
 
-#include "editor/editor_plugin.h"
-#include "scene/2d/collision_polygon_2d.h"
-#include "scene/2d/cpu_particles_2d.h"
-#include "scene/gui/box_container.h"
+#import <AppKit/AppKit.h>
+#import <Foundation/Foundation.h>
 
-class CheckBox;
-class ConfirmationDialog;
-class SpinBox;
-class EditorFileDialog;
-class MenuButton;
-class OptionButton;
+#include "core/templates/hash_map.h"
+#include "core/variant/variant.h"
 
-class CPUParticles2DEditorPlugin : public EditorPlugin {
-	GDCLASS(CPUParticles2DEditorPlugin, EditorPlugin);
+@interface GodotOpenSaveDelegate : NSObject <NSOpenSavePanelDelegate> {
+	NSSavePanel *dialog;
+	NSMutableArray *allowed_types;
 
-	enum {
-		MENU_LOAD_EMISSION_MASK,
-		MENU_CLEAR_EMISSION_MASK,
-		MENU_RESTART,
-		MENU_CONVERT_TO_GPU_PARTICLES,
-	};
+	HashMap<int, String> ctr_ids;
+	Dictionary options;
+	int cur_index;
+	int ctr_id;
 
-	enum EmissionMode {
-		EMISSION_MODE_SOLID,
-		EMISSION_MODE_BORDER,
-		EMISSION_MODE_BORDER_DIRECTED
-	};
+	String root;
+}
 
-	CPUParticles2D *particles = nullptr;
+- (void)makeAccessoryView:(NSSavePanel *)p_panel filters:(const Vector<String> &)p_filters options:(const Array &)p_options;
+- (void)setFileTypes:(NSMutableArray *)p_allowed_types;
+- (void)popupOptionAction:(id)p_sender;
+- (void)popupCheckAction:(id)p_sender;
+- (void)popupFileAction:(id)p_sender;
+- (int)getIndex;
+- (Dictionary)getSelection;
+- (int)setDefault:(const String &)p_name value:(int)p_value;
+- (void)setRootPath:(const String &)p_root_path;
 
-	EditorFileDialog *file = nullptr;
+@end
 
-	HBoxContainer *toolbar = nullptr;
-	MenuButton *menu = nullptr;
-
-	ConfirmationDialog *emission_mask = nullptr;
-	OptionButton *emission_mask_mode = nullptr;
-	CheckBox *emission_mask_centered = nullptr;
-	CheckBox *emission_colors = nullptr;
-
-	String source_emission_file;
-
-	void _file_selected(const String &p_file);
-	void _menu_callback(int p_idx);
-	void _generate_emission_mask();
-
-protected:
-	void _notification(int p_what);
-	static void _bind_methods();
-
-public:
-	virtual String get_name() const override { return "CPUParticles2D"; }
-	bool has_main_screen() const override { return false; }
-	virtual void edit(Object *p_object) override;
-	virtual bool handles(Object *p_object) const override;
-	virtual void make_visible(bool p_visible) override;
-
-	CPUParticles2DEditorPlugin();
-	~CPUParticles2DEditorPlugin();
-};
-
-#endif // CPU_PARTICLES_2D_EDITOR_PLUGIN_H
+#endif // GODOT_OPEN_SAVE_DELEGATE_H

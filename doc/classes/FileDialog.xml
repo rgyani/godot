@@ -19,6 +19,14 @@
 				For example, a [param filter] of [code]"*.png, *.jpg"[/code] and a [param description] of [code]"Images"[/code] results in filter text "Images (*.png, *.jpg)".
 			</description>
 		</method>
+		<method name="add_option">
+			<return type="void" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="values" type="PackedStringArray" />
+			<param index="2" name="index" type="int" />
+			<description>
+			</description>
+		</method>
 		<method name="clear_filters">
 			<return type="void" />
 			<description>
@@ -38,6 +46,29 @@
 				[b]Warning:[/b] This is a required internal node, removing and freeing it may cause a crash. If you wish to hide it or any of its children, use their [member CanvasItem.visible] property.
 			</description>
 		</method>
+		<method name="get_option_default" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="option" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_option_name" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="option" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_option_values" qualifiers="const">
+			<return type="PackedStringArray" />
+			<param index="0" name="option" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_selected_options" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
 		<method name="get_vbox">
 			<return type="VBoxContainer" />
 			<description>
@@ -49,6 +80,27 @@
 			<return type="void" />
 			<description>
 				Invalidate and update the current dialog content list.
+			</description>
+		</method>
+		<method name="set_option_default">
+			<return type="void" />
+			<param index="0" name="option" type="int" />
+			<param index="1" name="index" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_option_name">
+			<return type="void" />
+			<param index="0" name="option" type="int" />
+			<param index="1" name="name" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="set_option_values">
+			<return type="void" />
+			<param index="0" name="option" type="int" />
+			<param index="1" name="values" type="PackedStringArray" />
+			<description>
 			</description>
 		</method>
 	</methods>
@@ -75,6 +127,8 @@
 		</member>
 		<member name="mode_overrides_title" type="bool" setter="set_mode_overrides_title" getter="is_mode_overriding_title" default="true">
 			If [code]true[/code], changing the [member file_mode] property will set the window title accordingly (e.g. setting [member file_mode] to [constant FILE_MODE_OPEN_FILE] will change the window title to "Open a File").
+		</member>
+		<member name="option_count" type="int" setter="set_option_count" getter="get_option_count" default="0">
 		</member>
 		<member name="root_subfolder" type="String" setter="set_root_subfolder" getter="get_root_subfolder" default="&quot;&quot;">
 			If non-empty, the given sub-folder will be "root" of this [FileDialog], i.e. user won't be able to go to its parent directory.
