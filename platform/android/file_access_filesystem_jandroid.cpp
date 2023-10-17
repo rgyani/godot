@@ -53,6 +53,8 @@ jmethodID FileAccessFilesystemJAndroid::_file_write = nullptr;
 jmethodID FileAccessFilesystemJAndroid::_file_flush = nullptr;
 jmethodID FileAccessFilesystemJAndroid::_file_exists = nullptr;
 jmethodID FileAccessFilesystemJAndroid::_file_last_modified = nullptr;
+jmethodID FileAccessFilesystemJAndroid::_file_last_accessed = nullptr;
+jmethodID FileAccessFilesystemJAndroid::_file_size = nullptr;
 
 String FileAccessFilesystemJAndroid::get_path() const {
 	return path_src;
@@ -312,6 +314,36 @@ uint64_t FileAccessFilesystemJAndroid::_get_modified_time(const String &p_file) 
 	}
 }
 
+uint64_t FileAccessFilesystemJAndroid::_get_access_time(const String &p_file) {
+	if (_file_last_accessed) {
+		JNIEnv *env = get_jni_env();
+		ERR_FAIL_NULL_V(env, false);
+
+		String path = fix_path(p_file).simplify_path();
+		jstring js = env->NewStringUTF(path.utf8().get_data());
+		uint64_t result = env->CallLongMethod(file_access_handler, _file_last_accessed, js);
+		env->DeleteLocalRef(js);
+		return result;
+	} else {
+		return 0;
+	}
+}
+
+uint64_t FileAccessFilesystemJAndroid::_get_size(const String &p_file) {
+	if (_file_size) {
+		JNIEnv *env = get_jni_env();
+		ERR_FAIL_NULL_V(env, false);
+
+		String path = fix_path(p_file).simplify_path();
+		jstring js = env->NewStringUTF(path.utf8().get_data());
+		uint64_t result = env->CallLongMethod(file_access_handler, _file_size, js);
+		env->DeleteLocalRef(js);
+		return result;
+	} else {
+		return 0;
+	}
+}
+
 void FileAccessFilesystemJAndroid::setup(jobject p_file_access_handler) {
 	JNIEnv *env = get_jni_env();
 	file_access_handler = env->NewGlobalRef(p_file_access_handler);
@@ -332,6 +364,8 @@ void FileAccessFilesystemJAndroid::setup(jobject p_file_access_handler) {
 	_file_flush = env->GetMethodID(cls, "fileFlush", "(I)V");
 	_file_exists = env->GetMethodID(cls, "fileExists", "(Ljava/lang/String;)Z");
 	_file_last_modified = env->GetMethodID(cls, "fileLastModified", "(Ljava/lang/String;)J");
+	_file_last_accessed = env->GetMethodID(cls, "fileLastAccessed", "(Ljava/lang/String;)J");
+	_file_size = env->GetMethodID(cls, "fileSize", "(Ljava/lang/String;)J");
 }
 
 void FileAccessFilesystemJAndroid::close() {

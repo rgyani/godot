@@ -59,6 +59,18 @@ internal class FileData(filePath: String, accessFlag: FileAccessFlags) : DataAcc
 			}
 		}
 
+		fun fileLastAccessed(@Suppress("UNUSED_PARAMETER") filepath: String): Long {
+			return 0L
+		}
+
+		fun fileSize(filepath: String): Long {
+			return try {
+				File(filepath).length()
+			} catch (e: SecurityException) {
+				0L
+			}
+		}
+
 		fun delete(filepath: String): Boolean {
 			return try {
 				File(filepath).delete()

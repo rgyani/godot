@@ -296,6 +296,32 @@ uint64_t FileAccessUnix::_get_modified_time(const String &p_file) {
 	}
 }
 
+uint64_t FileAccessUnix::_get_access_time(const String &p_file) {
+	String file = fix_path(p_file);
+	struct stat status = {};
+	int err = stat(file.utf8().get_data(), &status);
+
+	if (!err) {
+		return status.st_atime;
+	} else {
+		print_verbose("Failed to get access time for: " + p_file + "");
+		return 0;
+	}
+}
+
+uint64_t FileAccessUnix::_get_size(const String &p_file) {
+	String file = fix_path(p_file);
+	struct stat status = {};
+	int err = stat(file.utf8().get_data(), &status);
+
+	if (!err) {
+		return status.st_size;
+	} else {
+		print_verbose("Failed to get size for: " + p_file + "");
+		return 0;
+	}
+}
+
 BitField<FileAccess::UnixPermissionFlags> FileAccessUnix::_get_unix_permissions(const String &p_file) {
 	String file = fix_path(p_file);
 	struct stat status = {};
