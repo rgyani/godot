@@ -124,6 +124,14 @@
 				[b]Note:[/b] On macOS, sandboxed applications are limited to run only embedded helper executables, specified during export.
 			</description>
 		</method>
+		<method name="execute_with_pipe">
+			<return type="FileAccess" />
+			<param index="0" name="path" type="String" />
+			<param index="1" name="arguments" type="PackedStringArray" />
+			<param index="2" name="read_stderr" type="bool" default="false" />
+			<description>
+			</description>
+		</method>
 		<method name="find_keycode_from_string" qualifiers="const">
 			<return type="int" enum="Key" />
 			<param index="0" name="string" type="String" />
