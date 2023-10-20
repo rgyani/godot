@@ -334,10 +334,22 @@ Variant EditorExportPreset::get_or_env(const StringName &p_name, const String &p
 	return get(p_name, r_valid);
 }
 
+String EditorExportPreset::get_build_nr(const StringName &p_preset_string) const {
+	String result = get(p_preset_string);
+	if (result.is_empty()) {
+		result = GLOBAL_GET("application/config/build");
+		if (result.is_empty()) {
+			result = "1";
+		}
+	}
+	return result;
+}
+
 String EditorExportPreset::get_version(const StringName &p_preset_string, bool p_windows_version) const {
 	String result = get(p_preset_string);
 	if (result.is_empty()) {
 		result = GLOBAL_GET("application/config/version");
+		String build_nr = GLOBAL_GET("application/config/build");
 
 		if (p_windows_version) {
 			// Modify version number to match Windows constraints (version numbers must have 4 components).
@@ -345,13 +357,13 @@ String EditorExportPreset::get_version(const StringName &p_preset_string, bool p
 			String windows_version;
 			if (result_split.is_empty()) {
 				// Use a valid fallback if the version string is empty, as a version number must be specified.
-				result = "1.0.0.0";
+				result = "1.0.0." + build_nr;
 			} else if (result_split.size() == 1) {
-				result = result + ".0.0.0";
+				result = result + ".0.0." + build_nr;
 			} else if (result_split.size() == 2) {
-				result = result + ".0.0";
+				result = result + ".0." + build_nr;
 			} else if (result_split.size() == 3) {
-				result = result + ".0";
+				result = result + "." + build_nr;
 			} else {
 				// 4 components or more in the version string. Trim to contain only the first 4 components.
 				result = vformat("%s.%s.%s.%s", result_split[0] + result_split[1] + result_split[2] + result_split[3]);

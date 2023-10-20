@@ -1069,9 +1069,14 @@ void ProjectExportDialog::_export_project_to_path(const String &p_path) {
 	Ref<EditorExportPlatform> platform = current->get_platform();
 	ERR_FAIL_COND(platform.is_null());
 	current->set_export_path(p_path);
-
 	platform->clear_messages();
+
+	uint32_t old_build_nr = ProjectSettings::get_singleton()->get_setting("application/config/build");
+	ProjectSettings::get_singleton()->set_setting("application/config/build", old_build_nr + 1); // Increase build number.
 	Error err = platform->export_project(current, export_debug->is_pressed(), current->get_export_path(), 0);
+	if (err != OK) {
+		ProjectSettings::get_singleton()->set_setting("application/config/build", old_build_nr); // Reset build number.
+	}
 	result_dialog_log->clear();
 	if (err != ERR_SKIP) {
 		if (platform->fill_log_messages(result_dialog_log, err)) {
@@ -1097,7 +1102,11 @@ void ProjectExportDialog::_export_all(bool p_debug) {
 	String export_target = p_debug ? TTR("Debug") : TTR("Release");
 	EditorProgress ep("exportall", TTR("Exporting All") + " " + export_target, EditorExport::get_singleton()->get_export_preset_count(), true);
 
+	uint32_t old_build_nr = ProjectSettings::get_singleton()->get_setting("application/config/build");
+	ProjectSettings::get_singleton()->set_setting("application/config/build", old_build_nr + 1); // Increase build number.
+
 	bool show_dialog = false;
+	bool all_exports_fail = true;
 	result_dialog_log->clear();
 	for (int i = 0; i < EditorExport::get_singleton()->get_export_preset_count(); i++) {
 		Ref<EditorExportPreset> preset = EditorExport::get_singleton()->get_export_preset(i);
@@ -1109,11 +1118,18 @@ void ProjectExportDialog::_export_all(bool p_debug) {
 
 		platform->clear_messages();
 		Error err = platform->export_project(preset, p_debug, preset->get_export_path(), 0);
+		if (err == OK) {
+			all_exports_fail = false; // At least one export was successful, keep new build number.
+		}
 		if (err == ERR_SKIP) {
-			return;
+			show_dialog = false;
+			break;
 		}
 		bool has_messages = platform->fill_log_messages(result_dialog_log, err);
 		show_dialog = show_dialog || has_messages;
+	}
+	if (all_exports_fail) {
+		ProjectSettings::get_singleton()->set_setting("application/config/build", old_build_nr); // Reset build number.
 	}
 	if (show_dialog) {
 		result_dialog->popup_centered_ratio(0.5);
