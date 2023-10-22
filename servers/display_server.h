@@ -125,10 +125,13 @@ public:
 		FEATURE_TEXT_TO_SPEECH,
 		FEATURE_EXTEND_TO_TITLE,
 		FEATURE_SCREEN_CAPTURE,
+		FEATURE_NATIVE_HELP,
 	};
 
 	virtual bool has_feature(Feature p_feature) const = 0;
 	virtual String get_name() const = 0;
+
+	virtual void help_set_search_callbacks(const Callable &p_search_callback = Callable(), const Callable &p_action_callback = Callable());
 
 	virtual void global_menu_set_popup_callbacks(const String &p_menu_root, const Callable &p_open_callback = Callable(), const Callable &p_close_callback = Callable());
 
